@@ -1,0 +1,7 @@
+{
+    "name": "eiko-devcontainer",
+    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+    "features": {
+        ".devcontainer/lua": {}
+    }
+}
