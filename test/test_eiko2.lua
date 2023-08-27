@@ -1,8 +1,8 @@
 local lu = require('luaunit')
 
-TestEiko = {}
+TestEiko2 = {}
 
-function TestEiko:test_smoke()
+function TestEiko2:test_smoke()
     lu.assertTrue(true)
     require('eiko')
 end

@@ -1,3 +1,4 @@
+rockspec_format = "3.0"
 package = "eiko"
 version = "dev-1"
 source = {
@@ -13,4 +14,8 @@ build = {
    modules = {
       eiko = "src/eiko.lua"
    }
+}
+test = {
+   type = "command",
+   command = "./test/test.sh"
 }
