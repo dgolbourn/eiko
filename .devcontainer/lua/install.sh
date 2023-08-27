@@ -6,7 +6,6 @@ git clone https://luajit.org/git/luajit.git
 cd luajit
 make
 sudo make install
-sudo ln -sf luajit /usr/local/bin/luajit
 cd ../
 
 git clone https://github.com/luarocks/luarocks.git

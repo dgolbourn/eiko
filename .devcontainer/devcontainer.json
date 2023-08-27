@@ -2,6 +2,7 @@
     "name": "eiko-devcontainer",
     "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
     "features": {
-        ".devcontainer/lua": {}
-    }
+        "./lua": {}
+    },
+    "postCreateCommand": "./.devcontainer/postCreateCommand.sh"
 }
