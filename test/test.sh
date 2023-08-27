@@ -2,8 +2,8 @@
 TEST_DIR=$1
 shift
 export LUATEST_OPTIONS=$*
-echo "Searching for test fixtures in $TEST_DIR"
-echo "Running luatest with options: $LUATEST_OPTIONS"
+echo "Test fixture search path: $TEST_DIR"
+echo "Luatest options: $LUATEST_OPTIONS"
 echo
 run_tests(){
     echo "Test file: $1"
