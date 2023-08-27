@@ -17,5 +17,5 @@ build = {
 }
 test = {
    type = "command",
-   command = "./test/test.sh"
+   command = "./test/test.sh ./test --verbose"
 }
