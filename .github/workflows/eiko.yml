@@ -15,7 +15,7 @@ jobs:
             - name: Build
               run: luarocks make --local
             - name: Test
-              run: luarocks test --local
+              run: eval '$(luarocks path)' && chmod +x ./test/test.sh && luarocks test --local
             - name: Test Report
               uses: dorny/test-reporter@v1
               if: success() || failure()
