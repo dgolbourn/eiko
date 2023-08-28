@@ -18,4 +18,4 @@ jobs:
               with:
                 name: Lua tests
                 path: reports/*.xml
-                reporter: junit
+                reporter: java-junit
