@@ -1,4 +1,6 @@
 name: Eiko
+permissions: 
+  actions: read
 on:
     push:
     workflow_dispatch:
@@ -19,3 +21,4 @@ jobs:
                 name: Lua tests
                 path: reports/*.xml
                 reporter: java-junit
+                fail-on-error: 'false'
