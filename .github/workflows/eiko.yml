@@ -1,6 +1,8 @@
 name: Eiko
-permissions: 
-  actions: write
+permissions:
+  id-token: write
+  contents: read
+  checks: write
 on:
     push:
     workflow_dispatch:
