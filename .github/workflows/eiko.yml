@@ -1,6 +1,6 @@
 name: Eiko
 permissions: 
-  actions: read
+  actions: write
 on:
     push:
     workflow_dispatch:
