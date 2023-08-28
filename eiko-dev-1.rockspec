@@ -17,5 +17,5 @@ build = {
 }
 test = {
    type = "command",
-   command = "./test/test.sh test --output junit --name reports"
+   command = "chmod +x ./test/test.sh && ./test/test.sh test --output junit --name reports"
 }
