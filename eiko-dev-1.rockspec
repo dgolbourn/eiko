@@ -17,5 +17,5 @@ build = {
 }
 test = {
    type = "command",
-   command = "luarocks path >> ~/.bashrc && source ~/.bashrc && chmod +x ./test/test.sh && ./test/test.sh test --output junit --name reports"
+   command = "eval '$(luarocks path)' && chmod +x ./test/test.sh && ./test/test.sh test --output junit --name reports"
 }
