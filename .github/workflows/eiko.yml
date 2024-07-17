@@ -21,10 +21,9 @@ jobs:
             uses: docker/build-push-action@v6
             with:
               push: true
-              context: "{{defaultContext}}:runner"
+              file: "runner/Dockerfile"
               tags: eiko/github-runner:latest
     build:
-#        runs-on: self-hosted
         runs-on: ubuntu-latest
         container:
             image: eiko/github-runner:latest
