@@ -6,7 +6,8 @@ source = {
 }
 dependencies = {
    "lua==5.1",
-   "luaunit"
+   "luaunit",
+   "luasocket",
 }
 description = {}
 build = {   
