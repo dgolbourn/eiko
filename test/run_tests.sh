@@ -18,4 +18,5 @@ run_tests(){
 }
 export -f run_tests
 ls -ahls /github/home/.luarocks/lib/lua/5.1/socket/
+whoami
 find $TEST_DIR -type f -name "test_*.lua" | xargs -l bash -c 'run_tests "$@"' _
