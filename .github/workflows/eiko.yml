@@ -22,11 +22,11 @@ jobs:
             with:
               push: true
               file: "runner/Dockerfile"
-              tags: eiko/github-runner:latest
+              tags: dianakatana/eiko/github-runner:latest
     build:
         runs-on: ubuntu-latest
         container:
-            image: eiko/github-runner:latest
+            image: dianakatana/eiko/github-runner:latest
             credentials:
                 username: ${{ secrets.DOCKERHUB_USERNAME }}
                 password: ${{ secrets.DOCKERHUB_ACCESSTOKEN }}
