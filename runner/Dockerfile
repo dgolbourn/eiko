@@ -5,10 +5,10 @@ COPY .devcontainer/ devcontainer
 RUN chmod +x devcontainer/scripts/install_lua.sh
 RUN devcontainer/scripts/install_lua.sh
 
-RUN ls
+RUN ls -lash
 COPY runner/ runner
-RUN ls runner/
-RUN ls runner/scripts
+RUN ls -lash runner/
+RUN ls -lash runner/scripts
 RUN chmod +x runner/scripts/install_runner.sh
 RUN runner/scripts/install_runner.sh
 
