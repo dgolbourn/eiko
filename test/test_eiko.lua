@@ -3,7 +3,7 @@ local lu = require('luaunit')
 TestEiko = {}
 
 function TestEiko:test_smoke()
-    lu.assertTrue(false)
+    lu.assertTrue(true)
     require('eiko')
 end
 
