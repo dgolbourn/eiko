@@ -1,5 +1,5 @@
 local lu = require('luaunit')
-local lu = require('luasocket')
+local lu = require('socket')
 
 TestEiko3 = {}
 
