@@ -18,5 +18,5 @@ build = {
 }
 test = {
    type = "command",
-   command = "./test/test.sh test --output junit --name reports"
+   command = "test/run_tests.sh test --output junit --name reports"
 }
