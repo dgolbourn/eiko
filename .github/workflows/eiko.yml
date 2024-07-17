@@ -34,9 +34,9 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v3
             - name: Build
-              run: luarocks make --local
+              run: luarocks make
             - name: Test
-              run: eval '$(luarocks path --bin)' && chmod +x test/run_tests.sh && luarocks test --local
+              run: eval '$(luarocks path --bin)' && chmod +x test/run_tests.sh && luarocks test
             - name: Test Report
               uses: dorny/test-reporter@v1
               if: success() || failure()
