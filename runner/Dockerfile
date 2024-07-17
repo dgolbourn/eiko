@@ -1,14 +1,13 @@
 FROM mcr.microsoft.com/devcontainers/base:ubuntu
-RUN mkdir -p /app/scripts
 WORKDIR /app
 
-COPY .devcontainer/scripts/* ./scripts/
-RUN chmod +x ./scripts/install_lua.sh
-RUN ./scripts/install_lua.sh
+COPY .devcontainer/ devcontainer
+RUN chmod +x devcontainer/scripts/install_lua.sh
+RUN devcontainer/scripts/install_lua.sh
 
-COPY runner/scripts/* ./scripts/
-RUN chmod +x ./scripts/install_runner.sh
-RUN ./scripts/install_runner.sh
+COPY runner/ runner
+RUN chmod +x runner/scripts/install_runner.sh
+RUN runner/scripts/install_runner.sh
 
 RUN useradd -m docker
 RUN chown -R docker ./actions-runner
