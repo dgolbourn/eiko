@@ -9,4 +9,6 @@ COPY runner/ runner
 RUN chmod +x runner/scripts/install.sh
 RUN runner/scripts/install.sh
 
+RUN chown -R vscode ./actions-runner
+
 ENTRYPOINT ["./scripts/start.sh"]
