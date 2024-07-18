@@ -18,6 +18,7 @@ jobs:
           filters: |
             src:
               - '.devcontainer/**'
+              - '!**/devcontainer.json'
       - if: steps.filter.outputs.src == 'true'    
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -40,6 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: dianakatana/eiko:builder
+      options: --user vscode
       credentials:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_ACCESSTOKEN }}
