@@ -1,5 +1,7 @@
 FROM mcr.microsoft.com/devcontainers/base:ubuntu
 
+RUN git config --unset safe.directory --global
+
 COPY scripts/install_lua.sh /tmp/scripts/install_lua.sh
 RUN chmod +x /tmp/scripts/install_lua.sh
 RUN /tmp/scripts/install_lua.sh
