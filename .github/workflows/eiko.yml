@@ -58,8 +58,11 @@ jobs:
               - 'test/**'
               - 'src/**'
       - if: steps.filter.outputs.src == 'true'
+        name: User
+        run: su vscode
+      - if: steps.filter.outputs.src == 'true'
         name: Build
-        run: whoami && luarocks make --local
+        run: luarocks make --local
       - if: steps.filter.outputs.src == 'true'
         name: Test
         run: chmod +x test/run_tests.sh && luarocks test --local
