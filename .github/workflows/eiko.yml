@@ -59,7 +59,7 @@ jobs:
               - 'src/**'
       - if: steps.filter.outputs.src == 'true'
         name: Build
-        run: su -c "luarocks make --local" vscode
+        run: chown vscode test/run_tests.sh && su -c "luarocks make --local" vscode
       - if: steps.filter.outputs.src == 'true'
         name: Test
         run: su -c "luarocks test --local" vscode
