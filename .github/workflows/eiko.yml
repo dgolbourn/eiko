@@ -46,8 +46,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          set-safe-directory: true
+      - name: work around permission issue with git vulnerability (we are local here)
+        run: git config --global --add safe.directory /__w/eiko/eiko
       - uses: dorny/paths-filter@v3
         id: filter
         with:
