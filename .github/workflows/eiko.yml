@@ -59,10 +59,10 @@ jobs:
               - 'src/**'
       - if: steps.filter.outputs.src == 'true'
         name: Build
-        run: su vscode && luarocks make --local
+        run: whoami && luarocks make --local
       - if: steps.filter.outputs.src == 'true'
         name: Test
-        run: su vscode && chmod +x test/run_tests.sh && luarocks test --local
+        run: chmod +x test/run_tests.sh && luarocks test --local
       - if: steps.filter.outputs.src == 'true'
         name: Test Report
         uses: dorny/test-reporter@v1
