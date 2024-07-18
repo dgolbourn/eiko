@@ -10,25 +10,33 @@ jobs:
   builder:
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Docker Buildx
+      - name: Checkout
+        uses: actions/checkout@v3
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            changes:
+              - '.devcontainer/**'
+      - if: steps.filter.outputs.changes == 'true'    
+        name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Login to Docker Hub
+      - if: steps.filter.outputs.changes == 'true'    
+        name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_ACCESSTOKEN }}
-      - name: Build and push
+      - if: steps.filter.outputs.changes == 'true'    
+        name: Build and push
         uses: docker/build-push-action@v6
         with:
           push: true
           context: "{{defaultContext}}:.devcontainer"
-          tags: dianakatana/eiko:bulider
+          tags: dianakatana/eiko:builder
   build:
     needs: 
       - builder
-    if: |
-      always() && 
-      (needs.builder.result == 'skipped' || needs.builder.result == 'success')
     runs-on: ubuntu-latest
     container:
       image: dianakatana/eiko:builder
@@ -38,13 +46,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Build
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            changes:
+              - 'test/**'
+              - 'src/**'
+      - if: steps.filter.outputs.changes == 'true'
+        name: Build
         run: luarocks make --local
-      - name: Test
+      - if: steps.filter.outputs.changes == 'true'
+        name: Test
         run: chmod +x test/run_tests.sh && luarocks test --local
-      - name: Test Report
+      - if: steps.filter.outputs.changes == 'true'
+        name: Test Report
         uses: dorny/test-reporter@v1
-        if: success() || failure()
         with:
           name: Lua tests
           path: reports/*.xml
