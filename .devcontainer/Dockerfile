@@ -1,7 +1,6 @@
-FROM mcr.microsoft.com/devcontainers/base:ubuntu
-RUN mkdir -p /app/scripts
-WORKDIR /app
+ARG FROM
+FROM ${FROM}
 
-COPY ./scripts/* ./scripts/
-RUN chmod +x ./scripts/install_lua.sh
-RUN ./scripts/install_lua.sh
+COPY scripts/install_lua.sh /tmp/scripts/install_lua.sh
+RUN chmod +x /tmp/scripts/install_lua.sh
+RUN /tmp/scripts/install_lua.sh
