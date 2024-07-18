@@ -1,9 +1,6 @@
 {
     "build": { 
         "dockerfile": "Dockerfile", 
-        "context": ".",
-        "args" : {
-            "FROM": "mcr.microsoft.com/devcontainers/base:ubuntu"
-        }
+        "context": "."
     }
 }

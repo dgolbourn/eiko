@@ -1,5 +1,4 @@
-ARG FROM
-FROM ${FROM}
+FROM mcr.microsoft.com/devcontainers/base:ubuntu
 
 COPY scripts/install_lua.sh /tmp/scripts/install_lua.sh
 RUN chmod +x /tmp/scripts/install_lua.sh
