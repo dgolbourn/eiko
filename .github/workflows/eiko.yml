@@ -29,7 +29,7 @@ jobs:
       - builder
     if: |
       always() && 
-      (needs.builder.result == 'skipped' || needs.skipped.result == 'success')
+      (needs.builder.result == 'skipped' || needs.builder.result == 'success')
     runs-on: ubuntu-latest
     container:
       image: dianakatana/eiko:builder
