@@ -63,10 +63,10 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_ACCESSTOKEN }}
     steps:
-      - name: Checkout
+      - name: Prepare 1/2
         run: sudo sh -c "chown vscode $PWD" && git clone --branch $GITHUB_REF_NAME $GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git .
-      - name: Permissions
-        run: chmod +x test/run_tests.sh
+      - name: Prepare 2/2
+        run: chmod +x test/run_tests.sh && eval "$(luarocks path --bin)"
       - name: Build
         run: luarocks make --local
       - name: Test
