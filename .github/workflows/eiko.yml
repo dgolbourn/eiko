@@ -48,8 +48,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: work around permission issue with git vulnerability (we are local here)
-        run: git config --global --add safe.directory /__w/eiko/eiko
+      - name: work around permissions
+        run: git config --global --add safe.directory /__w/eiko/eiko && chown vscode -R /__w/eiko/eiko
       - uses: dorny/paths-filter@v3.0.2
         id: filter
         with:
@@ -57,12 +57,14 @@ jobs:
             src:
               - 'test/**'
               - 'src/**'
+      - name: work around permissions
+        run: chmod +x test/run_tests.sh && su vscode && . /etc/profile   
       - if: steps.filter.outputs.src == 'true'
         name: Build
-        run: su -c "luarocks make --local" vscode
+        run: luarocks make --local
       - if: steps.filter.outputs.src == 'true'
         name: Test
-        run: chmod +x test/run_tests.sh && su -c ". /etc/profile && luarocks test --local" vscode
+        run: luarocks test --local
       - if: steps.filter.outputs.src == 'true'
         name: Test Report
         uses: dorny/test-reporter@v1
