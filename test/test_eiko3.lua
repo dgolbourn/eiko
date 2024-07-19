@@ -9,4 +9,3 @@ function TestEiko3:test_smoke()
 end
 
 os.exit(lu.LuaUnit.run())
-
