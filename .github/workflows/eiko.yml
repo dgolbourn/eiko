@@ -64,7 +64,7 @@ jobs:
         password: ${{ secrets.DOCKERHUB_ACCESSTOKEN }}
     steps:
       - name: Checkout
-        run: sudo sh -c "chown vscode $PWD" && git clone --branch $GITHUB_SHA $GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git .
+        run: sudo sh -c "chown vscode $PWD" && git clone --branch $GITHUB_REF_NAME $GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git .
       - name: Permissions
         run: chmod +x test/run_tests.sh
       - name: Build
