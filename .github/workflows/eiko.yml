@@ -49,7 +49,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: work around permissions
-        run: git config --global --add safe.directory /__w/eiko/eiko && chown vscode -R /__w/eiko/eiko
+        run: git config --global --add safe.directory /__w/eiko/eiko && chmod +x test/run_tests.sh
       - uses: dorny/paths-filter@v3.0.2
         id: filter
         with:
@@ -57,14 +57,12 @@ jobs:
             src:
               - 'test/**'
               - 'src/**'
-      - name: work around permissions
-        run: chmod +x test/run_tests.sh && su vscode && . /etc/profile   
       - if: steps.filter.outputs.src == 'true'
         name: Build
-        run: whoami && luarocks make --local
+        run: luarocks make
       - if: steps.filter.outputs.src == 'true'
         name: Test
-        run: whoami && luarocks test --local
+        run: luarocks test
       - if: steps.filter.outputs.src == 'true'
         name: Test Report
         uses: dorny/test-reporter@v1
