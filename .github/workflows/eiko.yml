@@ -64,9 +64,9 @@ jobs:
         password: ${{ secrets.DOCKERHUB_ACCESSTOKEN }}
     steps:
       - name: whut
-        run: whoami && echo $PWD
+        run: whoami && echo $PWD && ls -ahls
       - name: Checkout
-        run: git clone --branch $GITHUB_SHA $GITHUB_SERVER_URL:$GITHUB_REPOSITORY.git eiko && cd eiko
+        run: sudo sh -c "chown vscode /__w/eiko/eiko" && git clone --branch $GITHUB_SHA $GITHUB_SERVER_URL:$GITHUB_REPOSITORY.git .
       - name: Permissions
         run: chmod +x test/run_tests.sh
       - name: Build
