@@ -62,7 +62,7 @@ jobs:
         run: su -c "luarocks make --local" vscode
       - if: steps.filter.outputs.src == 'true'
         name: Test
-        run: chmod +x test/run_tests.sh && su -c "luarocks test --local" vscode
+        run: chmod +x test/run_tests.sh && su -c ". /etc/profile && luarocks test --local" vscode
       - if: steps.filter.outputs.src == 'true'
         name: Test Report
         uses: dorny/test-reporter@v1
