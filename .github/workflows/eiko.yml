@@ -63,6 +63,8 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_ACCESSTOKEN }}
     steps:
+      - name: whut
+        run: echo $HOME
       - name: Prepare
         run: |
           sudo sh -c "chown vscode $PWD"
