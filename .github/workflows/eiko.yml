@@ -63,6 +63,8 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_ACCESSTOKEN }}
     steps:
+      - name: whut
+        run: whoami && echo $PWD
       - name: Checkout
         run: git clone --branch $GITHUB_SHA $GITHUB_SERVER_URL:$GITHUB_REPOSITORY.git eiko && cd eiko
       - name: Permissions
