@@ -7,7 +7,7 @@ on:
   push:
   workflow_dispatch:
 jobs:
-  build-check:
+  filter:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -32,8 +32,8 @@ jobs:
       builder: ${{ steps.builder-filter.outputs.builder }}
   builder:
     needs: 
-      - build-check  
-    if: ${{ !failure() && !cancelled() && needs.build-check.outputs.builder == 'true' }}      
+      - filter  
+    if: ${{ !failure() && !cancelled() && needs.filter.outputs.builder == 'true' }}      
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -53,8 +53,8 @@ jobs:
   rock:
     needs: 
       - builder
-      - build-check
-    if: ${{ !failure() && !cancelled() && needs.build-check.outputs.rock == 'true' }}
+      - filter
+    if: ${{ !failure() && !cancelled() && needs.filter.outputs.rock == 'true' }}
     runs-on: ubuntu-latest
     container:
       image: dianakatana/eiko:builder
@@ -64,7 +64,7 @@ jobs:
         password: ${{ secrets.DOCKERHUB_ACCESSTOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        run: git clone --depth 1 $GITHUB_REF && cd eiko
       - name: Permissions
         run: chmod +x test/run_tests.sh
       - name: Build
