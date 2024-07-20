@@ -31,8 +31,6 @@ jobs:
         uses: actions/checkout@v4  
       - name: Install dependencies
         run: .devcontainer/scripts/install_lua.sh
-      - name: Update Lua path
-        run: $(luarocks path --bin) >> $GITHUB_ENV
       - name: Build
         run: luarocks make --local
       - name: Test
