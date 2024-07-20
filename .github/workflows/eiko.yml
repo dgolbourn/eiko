@@ -34,9 +34,9 @@ jobs:
       - name: Update Lua path
         run: $(luarocks path --bin) >> $GITHUB_ENV
       - name: Build
-        run: luarocks make
+        run: luarocks make --local
       - name: Test
-        run:  luarocks test
+        run:  luarocks test --local
       - name: Test Report
         uses: dorny/test-reporter@v1
         with:
