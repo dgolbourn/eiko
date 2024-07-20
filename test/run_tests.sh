@@ -6,6 +6,7 @@ echo
 echo "Test fixture search path: $TEST_DIR"
 echo "Luatest options: $LUATEST_OPTIONS"
 echo
+rm -r reports
 mkdir reports
 run_tests(){
     echo "Test file: $1"

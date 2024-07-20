@@ -13,6 +13,6 @@ cd luarocks
 ./configure --force-config --with-lua-interpreter=luajit --lua-version=5.1
 make
 sudo make install
-sudo bash -c 'echo "eval \"\$(luarocks path --bin)\"" >> /etc/bash.bashrc'
-sudo bash -c 'echo "alias lua=luajit" >> /etc/bash.bashrc'
+sudo bash -c 'echo "eval \"\$(luarocks path --bin)\"" >> /etc/profile'
+sudo ln -s /usr/local/bin/luajit /usr/local/bin/lua
 cd ../
