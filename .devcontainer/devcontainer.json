@@ -3,5 +3,12 @@
         "dockerfile": "Dockerfile", 
         "context": "."
     },
-    "postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}"
+    "postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "github.vscode-github-actions"
+            ]
+        }
+    }
 }
