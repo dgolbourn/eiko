@@ -15,5 +15,3 @@ make
 sudo make install
 sudo bash -c 'echo "eval \"\$(luarocks path --bin)\"" >> /etc/profile'
 cd ../
-
-. /etc/profile
