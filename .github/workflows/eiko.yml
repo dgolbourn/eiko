@@ -63,15 +63,14 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_ACCESSTOKEN }}
     steps:
-      - name: whut
-        run: echo $HOME
-      - name: Prepare
+      - name: Define HOME
+        run: echo "HOME=/home/vscode" >> $GITHUB_ENV
+      - name: Define Lua path
+        run: echo "$(luarocks path --bin)" >> $GITHUB_ENV
+      - name: Clone repo
         run: |
-          sudo sh -c "chown vscode $PWD"
           git clone --branch $GITHUB_REF_NAME $GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git .
           chmod +x test/run_tests.sh
-          sudo sh -c "chown -R vscode /github/home"
-          eval "$(luarocks path --bin)"
       - name: Build
         run: luarocks make --local
       - name: Test
