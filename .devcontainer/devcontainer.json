@@ -3,5 +3,5 @@
         "dockerfile": "Dockerfile", 
         "context": "."
     },
-    "postCreateCommand": ".devcontainer/scripts/postCreateCommand.sh"
+    "postCreateCommand": ".devcontainer/scripts/postCreateCommand.sh ${containerWorkspaceFolder}"
 }
