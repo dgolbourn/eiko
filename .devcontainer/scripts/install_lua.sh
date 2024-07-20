@@ -14,4 +14,5 @@ cd luarocks
 make
 sudo make install
 sudo bash -c 'echo "eval \"\$(luarocks path --bin)\"" >> /etc/profile'
+sudo echo "alias lua=luajit" >> /etc/profile
 cd ../
