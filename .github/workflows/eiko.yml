@@ -32,9 +32,9 @@ jobs:
       - name: Install dependencies
         run: .devcontainer/scripts/install_lua.sh
       - name: Build
-        run: luarocks make --local
+        run: sudo luarocks make
       - name: Test
-        run:  luarocks test --local
+        run:  luarocks test
       - name: Test Report
         uses: dorny/test-reporter@v1
         with:
