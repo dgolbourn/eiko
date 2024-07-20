@@ -3,6 +3,7 @@ TEST_DIR=$1
 shift
 export LUATEST_OPTIONS=$*
 eval "\$(luarocks path --bin)"
+
 echo
 echo "Test fixture search path: $TEST_DIR"
 echo "Luatest options: $LUATEST_OPTIONS"
