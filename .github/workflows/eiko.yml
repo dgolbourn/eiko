@@ -58,21 +58,18 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: dianakatana/eiko:builder
-      options: --user vscode
       credentials:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_ACCESSTOKEN }}
     steps:
-      - name: Define HOME
-        run: sudo sh -c 'echo "HOME=/home/vscode" >> $GITHUB_ENV'
       - name: Clone repo
         run: |
           git clone --branch $GITHUB_REF_NAME $GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git .
           chmod +x test/run_tests.sh
       - name: Build
-        run: luarocks make --local
+        run: luarocks make
       - name: Test
-        run:  luarocks test --local
+        run:  luarocks test
       - name: Test Report
         uses: dorny/test-reporter@v1
         with:
