@@ -3,5 +3,5 @@
         "dockerfile": "Dockerfile", 
         "context": "."
     },
-    "postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}"
+    "postCreateCommand": ".devcontainer/scripts/postCreateCommand.sh"
 }
