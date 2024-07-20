@@ -34,8 +34,7 @@ jobs:
       - name: Build
         run: |
           sudo luarocks make
-          sudo cd /usr/local/share/lua/5.1
-          sudo chmod a+r *
+          sudo chmod a+r /usr/local/share/lua/5.1/*
       - name: Test
         run:  luarocks test
       - name: Test Report
