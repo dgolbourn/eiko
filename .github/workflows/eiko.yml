@@ -29,12 +29,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4  
-      - name: Install dependencies
-        run: .devcontainer/scripts/install_lua.sh
+      - uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: "luajit-5.1"
+      - uses: leafo/gh-actions-luarocks@v4
       - name: Build
-        run: sudo luarocks make
+        run: luarocks make
       - name: Test
-        run:  sudo luarocks test
+        run:  luarocks test
       - name: Test Report
         uses: dorny/test-reporter@v1
         with:
