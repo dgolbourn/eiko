@@ -1,7 +1,6 @@
 #!/bin/bash
 sudo apt update -y
-sudo apt upgrade -y
-sudo apt install -y build-essential libreadline-dev unzip libssl-dev rlwrap libsodium-dev libsnappy-dev
+sudo apt install -y build-essential libreadline-dev unzip libssl-dev rlwrap
 
 git clone https://luajit.org/git/luajit.git
 cd luajit
@@ -18,3 +17,5 @@ cd ../
 
 sudo bash -c 'echo "eval \"\$(luarocks path --bin)\"" >> /etc/profile'
 sudo ln -s /usr/local/bin/luajit /usr/local/bin/lua
+
+xargs sudo apt install -y < scripts/packages.txt
