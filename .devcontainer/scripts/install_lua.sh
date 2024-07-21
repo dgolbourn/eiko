@@ -17,5 +17,3 @@ cd ../
 
 sudo bash -c 'echo "eval \"\$(luarocks path --bin)\"" >> /etc/profile'
 sudo ln -s /usr/local/bin/luajit /usr/local/bin/lua
-
-xargs sudo apt install -y < scripts/packages.txt
