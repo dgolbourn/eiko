@@ -19,6 +19,7 @@ jobs:
             rock:
               - 'test/**'
               - 'src/**'
+              - 'eiko-scm-1.rockspec'
     outputs:
       rock: ${{ steps.rock-filter.outputs.rock }}
   rock:
