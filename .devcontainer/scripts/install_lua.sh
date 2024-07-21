@@ -1,6 +1,7 @@
 #!/bin/bash
 sudo apt update -y
 sudo apt install -y build-essential libreadline-dev unzip libssl-dev rlwrap libsodium-dev libsnappy-dev
+
 git clone https://luajit.org/git/luajit.git
 cd luajit
 make
