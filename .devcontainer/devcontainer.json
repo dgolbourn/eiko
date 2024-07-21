@@ -6,6 +6,9 @@
     "postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}",
     "customizations": {
         "vscode": {
+            "files.associations": {
+                "rockspec" : "lua"
+            },
             "extensions": [
                 "github.vscode-github-actions"
             ]
