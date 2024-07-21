@@ -12,6 +12,7 @@ dependencies = {
    "luasodium",
    "lua-resty-snappy",
    "diff_match_patch",
+   "lua-cjson",
 }
 description = {}
 build = {

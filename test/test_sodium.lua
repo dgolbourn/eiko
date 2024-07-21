@@ -1,9 +1,9 @@
-local lu = require('luaunit')
+local lu = require "luaunit"
 
-TestEiko = {}
+Test = {}
 
-function TestEiko:test_sodium()
-    local luasodium = require('luasodium')
+function Test:test_sodium()
+    local luasodium = require "luasodium"
     local message = 'my message to encrypt'
     local nonce = string.rep('\0', luasodium.crypto_secretbox_NONCEBYTES)
     local key = string.rep('\0', luasodium.crypto_secretbox_KEYBYTES)

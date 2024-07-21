@@ -1,8 +1,8 @@
-local lu = require('luaunit')
+local lu = require "luaunit"
 
-TestEiko3 = {}
+Test = {}
 
-function TestEiko3:test_snappy()
+function Test:test_snappy()
     local snappy = require "resty.snappy"
     local uncomp, err = snappy.uncompress(snappy.compress("test"))
 end

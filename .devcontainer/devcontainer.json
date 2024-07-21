@@ -4,6 +4,7 @@
         "context": "."
     },
     "postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}",
+    "postStartCommand": "luarocks make --local --server rocks",
     "customizations": {
         "vscode": {
             "settings": {

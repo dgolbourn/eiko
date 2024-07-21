@@ -1,10 +1,10 @@
-local lu = require('luaunit')
+local lu = require "luaunit"
 
-TestEiko2 = {}
+Test = {}
 
-function TestEiko2:test_diff_match_patch()
-    bit32 = require("bit32")
-    dmp = require("diff_match_patch")
+function Test:test_diff_match_patch()
+    bit32 = require "bit32"
+    dmp = require "diff_match_patch"
     text1 = "the quick brown fox jumped over the lazy dog"
     text2 = "the lazy dog did not jump over the quick brown fox"
     diffs = dmp.diff_main(text1, text2)
