@@ -1,6 +1,6 @@
 rockspec_format = "3.0"
 package = "eiko"
-version = "dev-1"
+version = "scm-1"
 source = {
    url=""
 }
@@ -10,7 +10,7 @@ dependencies = {
    "luasocket",
 }
 description = {}
-build = {   
+build = {
    type = "builtin",
    modules = {
       eiko = "src/eiko.lua"
