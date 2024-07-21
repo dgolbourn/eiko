@@ -34,8 +34,10 @@ jobs:
         with:
           luaVersion: luajit
       - uses: leafo/gh-actions-luarocks@v4
+      - name: Dependencies
+        run: xargs sudo apt install -y < .devcontainer/scripts/packages.txt
       - name: Build
-        run: luarocks make
+        run: luarocks make --server rocks
       - name: Test
         run:  luarocks test
       - name: Test Report

@@ -1,0 +1,3 @@
+libssl-dev
+libsodium-dev
+libsnappy-dev
