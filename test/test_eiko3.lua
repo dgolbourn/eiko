@@ -1,11 +1,10 @@
 local lu = require('luaunit')
-local so = require('socket')
 
 TestEiko3 = {}
 
-function TestEiko3:test_smoke()
-    lu.assertTrue(true)
-    require('eiko')
+function TestEiko3:test_snappy()
+    local snappy = require "resty.snappy"
+    local uncomp, err = snappy.uncompress(snappy.compress("test"))
 end
 
 os.exit(lu.LuaUnit.run())

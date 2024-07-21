@@ -8,6 +8,10 @@ dependencies = {
    "lua==5.1",
    "luaunit",
    "luasocket",
+   "luasec",
+   "luasodium",
+   "lua-resty-snappy",
+   "diff_match_patch",
 }
 description = {}
 build = {

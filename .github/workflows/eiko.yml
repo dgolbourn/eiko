@@ -35,7 +35,7 @@ jobs:
           luaVersion: luajit
       - uses: leafo/gh-actions-luarocks@v4
       - name: Build
-        run: luarocks make
+        run: luarocks make --server rocks
       - name: Test
         run:  luarocks test
       - name: Test Report

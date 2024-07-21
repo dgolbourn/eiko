@@ -1,6 +1,6 @@
 #!/bin/bash
 sudo apt update -y
-sudo apt install -y build-essential libreadline-dev unzip libssl-dev rlwrap
+sudo apt install -y build-essential libreadline-dev unzip libssl-dev rlwrap libsodium-dev 
 
 git clone https://luajit.org/git/luajit.git
 cd luajit
