@@ -2,7 +2,7 @@ rockspec_format = "3.0"
 package = "eiko"
 version = "scm-1"
 source = {
-   url=""
+   url="."
 }
 dependencies = {
    "lua==5.1",
@@ -17,8 +17,11 @@ dependencies = {
 description = {}
 build = {
    type = "builtin",
-   modules = {
-      eiko = "src/eiko.lua"
+   install = {
+      lua = {
+         eiko = "src/eiko.lua",
+         ["eiko.encdec"] = "src/encdec.lua"
+      }
    }
 }
 test = {
