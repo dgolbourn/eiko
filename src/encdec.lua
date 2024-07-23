@@ -4,9 +4,8 @@ local dmp = require "diff_match_patch"
 local snappy = require "resty.snappy"
 local sodium = require "sodium"
 
-local function encode(payload, previous, key)
-    local text1 = cjson.encode(payload)
-    local diffs = dmp.diff_main(previous, text1)
+local function encode(new, previous, key)
+    local diffs = dmp.diff_main(previous, new)
     local patches = dmp.patch_make(previous, diffs)
     local text = dmp.patch_toText(patches)
     local compressed = snappy.compress(text)
@@ -21,9 +20,8 @@ local function decode(noncesecret, previous, key)
     local compressed = sodium.crypto_secretbox_open_easy(secret, nonce, key)
     local text = snappy.uncompress(compressed)
     local patches = dmp.patch_fromText(text)
-    local text1 = dmp.patch_apply(patches, previous)
-    local payload = cjson.decode(text1)
-    return payload
+    local new = dmp.patch_apply(patches, previous)
+    return new
 end
 
 return {

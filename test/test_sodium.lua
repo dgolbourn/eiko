@@ -3,17 +3,13 @@ local lu = require "luaunit"
 Test = {}
 
 function Test:test_sodium()
-    local luasodium = require "luasodium"
+    local sodium = require "sodium"
     local message = 'my message to encrypt'
-    local nonce = string.rep('\0', luasodium.crypto_secretbox_NONCEBYTES)
-    local key = string.rep('\0', luasodium.crypto_secretbox_KEYBYTES)
-    assert(
-      luasodium.crypto_secretbox_open_easy(
-        luasodium.crypto_secretbox_easy(message,nonce,key),
-        nonce,
-        key
-      ) == message
-    )
+    local nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+    local key = sodium.crypto_secretbox_keygen()
+    local encoded_message = sodium.crypto_secretbox_easy(message, nonce, key)
+    local decoded_message = sodium.crypto_secretbox_open_easy(encoded_message, nonce, key) 
+    lu.assertEquals(message, decoded_message)
 end
 
 os.exit(lu.LuaUnit.run())

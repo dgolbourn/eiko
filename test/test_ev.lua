@@ -7,8 +7,8 @@ local function callback(loop, timer_event)
 end
 
 function Test:test_ev()
-    ev = require "ev"
-    local timer = ev.Timer.new(callback, 1, 1)
+    local ev = require "ev"
+    local timer = ev.Timer.new(callback, 0.1, 0.1)
     timer:start(ev.Loop.default)
     ev.Loop.default:loop()
 end
