@@ -21,7 +21,10 @@ build = {
    install = {
       lua = {
          eiko = "src/eiko.lua",
-         ["eiko.encdec"] = "src/encdec.lua"
+         ["eiko.encdec"] = "src/encdec.lua",
+         ["eiko.client_command"] = "src/client_command.lua",
+         ["eiko.game_loop"] = "src/game_loop.lua",
+         ["eiko.server_event"] = "src/server_event.lua",
       }
    }
 }
