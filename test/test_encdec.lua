@@ -7,10 +7,12 @@ function Test:test_encdec()
     local cjson = require "cjson"
     local sodium = require "sodium"
     payload = {a={"blah"}}
-    previous = [[{a:["foo"]}]]
+    previous = [[{"a":["foo"]}]]
     key = sodium.crypto_secretbox_keygen()
-    nonce, secret = encdec.encode(payload, previous, key)
-    decoded_payload = encdec.decode(nonce, secret, previous, key)
+    new = cjson.encode(payload)
+    noncesecret = encdec.encode(new, previous, key)
+    decoded_new = encdec.decode(noncesecret, previous, key)
+    decoded_payload = cjson.decode(decoded_new)
     lu.assertEquals(payload, decoded_payload)
 end
 

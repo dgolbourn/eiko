@@ -2,3 +2,4 @@ external/
 reference/
 .vscode/
 reports
+*.pem

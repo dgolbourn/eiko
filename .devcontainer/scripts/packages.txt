@@ -1,3 +1,4 @@
 libssl-dev
 libsodium-dev
 libsnappy-dev
+libev-dev

@@ -1,12 +1,14 @@
-print("hello")
+local ev = require "ev"
+local se = require "eiko.server_event"
+local cc = require "eiko.client_command"
+local gl = require "eiko.game_loop"
 
-local region = {}      
-region[1] = nil
-region[2] = nil
-region[3] = nil
+cc.start("localhost", 21098)
 
-local ffi = require("ffi")
-ffi.cdef[[
-int printf(const char *fmt, ...);
-]]
-ffi.C.printf("Hello %s!\n", "world")
+se.start("localhost", 21098)
+
+local game_loop_period = 1./40
+local game_loop_timer = ev.Timer.new(gl.callback, game_loop_period, game_loop_period)
+game_loop_timer:start(ev.Loop.default)
+
+ev.Loop.default:loop()
