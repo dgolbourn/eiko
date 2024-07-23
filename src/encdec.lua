@@ -12,10 +12,12 @@ local function encode(payload, previous, key)
     local compressed = snappy.compress(text)
     local nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
     local secret = sodium.crypto_secretbox_easy(compressed, nonce, key)
-    return nonce, secret
+    return nonce .. secret
 end
 
-local function decode(nonce, secret, previous, key)
+local function decode(noncesecret, previous, key)
+    local nonce = string.sub(noncesecret, 1, sodium.crypto_secretbox_NONCEBYTES)
+    local secret = string.sub(noncesecret, sodium.crypto_secretbox_NONCEBYTES + 1, -1)
     local compressed = sodium.crypto_secretbox_open_easy(secret, nonce, key)
     local text = snappy.uncompress(compressed)
     local patches = dmp.patch_fromText(text)

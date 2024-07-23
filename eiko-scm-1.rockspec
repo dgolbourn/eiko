@@ -2,7 +2,7 @@ rockspec_format = "3.0"
 package = "eiko"
 version = "scm-1"
 source = {
-   url="."
+   url=""
 }
 dependencies = {
    "lua==5.1",
@@ -13,6 +13,7 @@ dependencies = {
    "lua-resty-snappy",
    "diff_match_patch",
    "lua-cjson",
+   "lua-ev",
 }
 description = {}
 build = {
