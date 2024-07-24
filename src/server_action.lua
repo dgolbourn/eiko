@@ -1,20 +1,48 @@
+local encdec = require "encdec"
+
 local state = nil
 
-local function authorize(peername, data)
-    print(data)
-    return true
+local authentication_key_lifetime = 30
+local traffic_key_lifetime = 86400
+
+local function verify(data)
+    local now = os.clock()
+    for k, pending in pairs(state.pending) do
+        if now - pending.now > authentication_key_lifetime do
+            print("timeout", pending.id)
+            state.pending[k] = nil
+        else
+            local verified = encdec.verify(data, pa.authentication_key)
+            if verified then
+                print("verified", pending.id)
+                state.pending[k] = nil
+                pending.authentication_key = nil
+                return pending
+            end
+        end
+    end
 end
 
-local function consume(peername, data)
-    local authorized_client = state.authorized_clients[peername]
-    if authorized_client then
+local function expect(id, authentication_key, traffic_key)
+    local pending = {}
+    pending.authentication_key = authentication_key
+    pending.traffic_key = traffic_key
+    pending.now = os.clock()
+    pending.id = id
+    table.insert(state.pending, pending)
+end
+
+local function consume(host, port, data)
+    local peername = host .. ":" .. port
+    local verified = state.verified[peername]
+    if verified then
         print(data)
     else
-        if authorize(peername, data) then
-            authorized_client = {}
-            authorized_client.port = port
-            authorized_client.ip = host
-            state.authorized_clients[peername] = authorized_client
+        verified = verify(data)
+        if verified then
+            verified.port = port
+            verified.host = host
+            state.verified[peername] = verified
         end
     end
 end
@@ -27,7 +55,8 @@ local function start()
     local timer = ev.Timer.new(on_server_timer_event, period, period)
     timer:start(ev.Loop.default)
     state = {}
-    state.authorized_clients = {}
+    state.verified = {}
+    state.pending = {}
     state.timer = timer
 end
 
@@ -39,5 +68,6 @@ end
 return {
     start = start,
     stop = stop,
-    consume = consume
+    consume = consume,
+    expect = expect
 }

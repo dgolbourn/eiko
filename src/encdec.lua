@@ -4,7 +4,7 @@ local dmp = require "diff_match_patch"
 local snappy = require "resty.snappy"
 local sodium = require "sodium"
 
-local function encode(new, previous, key)
+local function delta_compress_encode(new, previous, key)
     local diffs = dmp.diff_main(previous, new)
     local patches = dmp.patch_make(previous, diffs)
     local text = dmp.patch_toText(patches)
@@ -14,7 +14,7 @@ local function encode(new, previous, key)
     return nonce .. secret
 end
 
-local function decode(noncesecret, previous, key)
+local function delta_compress_decode(noncesecret, previous, key)
     local nonce = string.sub(noncesecret, 1, sodium.crypto_secretbox_NONCEBYTES)
     local secret = string.sub(noncesecret, sodium.crypto_secretbox_NONCEBYTES + 1, -1)
     local compressed = sodium.crypto_secretbox_open_easy(secret, nonce, key)
@@ -24,7 +24,19 @@ local function decode(noncesecret, previous, key)
     return new
 end
 
+local function authenticate(message, key)
+    return message .. sodium.crypto_auth(message, key)
+end
+
+local function verify(messagetag, key)
+    local message = string.sub(messagetag, 1, -sodium.crypto_auth_BYTES -1)
+    local tag = string.sub(messagetag, -sodium.crypto_auth_BYTES, -1)    
+    return sodium.crypto_auth_verify(tag, message, key)
+end
+
 return {
     encode = encode, 
-    decode = decode
+    decode = decode,
+    authenticate = authenticate,
+    verify = verify
 }

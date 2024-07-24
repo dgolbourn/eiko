@@ -9,7 +9,7 @@ local function on_server_io_event(loop, io, revents)
     data, host, port = udp_state.udp:receivefrom()
     peername = host .. ':' .. port
     print(peername, data)
-    action.consume(peername, data)
+    action.consume(host, port, data)
 end
 
 local function start(host, port)
