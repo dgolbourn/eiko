@@ -1,13 +1,15 @@
-local socket = require("socket")
-local ev = require("ev")
+local socket = require "socket"
+local ev = require "ev"
+local action = require "eiko.server_action"
 
-udp_state = nil
+local udp_state = nil
 
 local function on_server_io_event(loop, io, revents)
     print("on_server_io_event")
-    client_datagram, client_ip, client_port = udp_state.udp:receivefrom()
-    print(client_datagram)
-    udp_state.udp:sendto("ACK", client_ip, client_port)
+    data, host, port = udp_state.udp:receivefrom()
+    peername = host .. ':' .. port
+    print(peername, data)
+    action.consume(peername, data)
 end
 
 local function start(host, port)
@@ -22,8 +24,9 @@ local function start(host, port)
 end
 
 local function stop()
-    udp:close()
-    udp = nil
+    udp_state.io_watcher:stop(ev.Loop.default)
+    udp_state.udp:close()
+    udp_state = nil
 end
 
 return {

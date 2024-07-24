@@ -2,6 +2,7 @@ local socket = require "socket"
 local ev = require "ev"
 local ssl = require "ssl"
 local bit32 = require "bit32"
+local action = require "eiko.client_action"
 
 local server_state = nil
 
@@ -17,14 +18,13 @@ local function on_client_io_event(peername, loop, io, revents)
     client_state.buffer = partial
     print(data, err, partial)
     if data then
-        -- queue completed data packet to state machine
+        action.consume(peername, data)
     elseif err == "wantread" or err == "wantwrite" then
     else
         client_state.client:close()
         client_state.io_watcher:stop(ev.Loop.default)
         client_states[peername] = nil
     end
-
 end
 
 local function on_handshake_io_event(peername, loop, io, revents)
