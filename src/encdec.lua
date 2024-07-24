@@ -50,7 +50,7 @@ local function authenticate(message, key)
 end
 
 local function verify(messagetag, key)
-    local message = string.sub(messagetag, 1, -sodium.crypto_auth_BYTES -1)
+    local message = string.sub(messagetag, 1, -(sodium.crypto_auth_BYTES + 1))
     local tag = string.sub(messagetag, -sodium.crypto_auth_BYTES, -1)
     return sodium.crypto_auth_verify(tag, message, key)
 end
