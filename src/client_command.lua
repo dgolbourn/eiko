@@ -1,5 +1,6 @@
-local socket = require("socket")
-local ev = require("ev")
+local socket = require "socket"
+local ev = require "ev"
+local ssl = require "ssl"
 
 local server_state = nil
 
@@ -10,28 +11,45 @@ local function on_client_io_event(peername, loop, io, revents)
     client_state = client_states[peername]
     local data, err, partial = client_state.client:receive('*a', client_state.buffer)
     client_state.buffer = partial
-    if data then
-    elseif err == "timeout" then
-    elseif err == "closed" then
+    print(data)
+    print(err)
+    print(partial)
+    if data or err == "timeout" or err == "wantread" then
+    else
         client_state.io_watcher:stop(ev.Loop.default)
         client_states[peername] = nil
     end
 end
 
+local params = {
+    mode = "server",
+    protocol = "tlsv1_2",
+    key = "test/ca-key.pem",
+    certificate = "test/ca-cert.pem",
+    verify = "none",
+    options = "all"
+}
+
 local function on_server_io_event(loop, io, revents)
     print("on_server_io_event")
     local client = server_state.server:accept()
-    client:settimeout(0)
-    local client_state = {}
     local peername = client:getpeername()
-    local io_event = function(loop, io, revents)
-        on_client_io_event(peername, loop, io, revents)
+    client = ssl.wrap(client, params)
+    local success, msg = client:dohandshake()
+    print(success)
+    print(msg)
+    if success then
+        client:settimeout(0) 
+        local client_state = {}
+        local io_event = function(loop, io, revents)
+            on_client_io_event(peername, loop, io, revents)
+        end
+        local io_watcher = ev.IO.new(io_event, client:getfd(), ev.READ)
+        io_watcher:start(ev.Loop.default)
+        client_state.client = client
+        client_state.io_watcher = io_watcher
+        client_states[peername] = client_state
     end
-    local io_watcher = ev.IO.new(io_event, client:getfd(), ev.READ)
-    io_watcher:start(ev.Loop.default)
-    client_state.client = client
-    client_state.io_watcher = io_watcher
-    client_states[client:getpeername()] = client_state
 end
 
 local function start(host, port)
