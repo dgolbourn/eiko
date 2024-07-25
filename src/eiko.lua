@@ -4,6 +4,10 @@ local sa = require "eiko.server_action"
 local cc = require "eiko.client_command"
 local gl = require "eiko.game_loop"
 
+
+local log = require "eiko.logging".defaultLogger()
+
+
 cc.start("localhost", 21098)
 
 se.start("localhost", 21098)

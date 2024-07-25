@@ -1,0 +1,18 @@
+---
+server_event:
+  key_expiry_check_period : 1
+  message_history_depth : 20
+  authentication_key_period : 30
+  traffic_key_period : 86400
+  host: localhost
+  port: 21098
+
+client_command:
+  ssl_params :
+      mode : server,
+      protocol : tlsv1_2,
+      key : test/ca-key.pem,
+      certificate : test/ca-cert.pem,
+      verify : none,
+      options : all
+  handshake_timeout_period : 0.01
