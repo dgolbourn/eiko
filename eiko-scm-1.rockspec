@@ -14,6 +14,7 @@ dependencies = {
    "diff_match_patch",
    "lua-cjson",
    "lua-ev",
+   "jsonschema",
 }
 description = {}
 build = {
@@ -26,9 +27,11 @@ build = {
          ["eiko.client_action"] = "src/client_action.lua",
          ["eiko.game_loop"] = "src/game_loop.lua",
          ["eiko.server_event"] = "src/server_event.lua",
-         ["eiko.server_action"] = "src/server_action.lua",         
+         ["eiko.server_action"] = "src/server_action.lua",  
+         ["eiko.data_model"] = "src/data_model.lua",         
       }
-   }
+   },
+   copy_directories = {"res"}
 }
 test = {
    type = "command",
