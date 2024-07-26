@@ -32,8 +32,9 @@ build = {
          ["eiko.game_loop"] = "src/game_loop.lua",
          ["eiko.server_event"] = "src/server_event.lua",
          ["eiko.data_model"] = "src/data_model.lua",
-         ["eiko.logs"] = "src/logs.lua",   
-         ["eiko.config"] = "src/config.lua",         
+         ["eiko.logs"] = "src/logs.lua",
+         ["eiko.config"] = "src/config.lua",
+         ["eiko.signals"] = "src/signals.lua",
       }
    },
    copy_directories = {"res"}

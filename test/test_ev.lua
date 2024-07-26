@@ -2,14 +2,23 @@ local lu = require "luaunit"
 
 Test = {}
 
-local function callback(loop, timer_event)
-    timer_event:stop(loop)
+local function signal_watcher(loop, sig, revents)
+    sig:stop(ev.Loop.default)
+    print("received")
+end
+
+local function timer_watcher(loop, timer, revents)
+    local signal = require "signals"
+    timer:stop(ev.Loop.default)
+    local watcher = ev.Signal.new(signal_watcher, signal.realtime(3))
+    watcher:start(ev.Loop.default)
+    signal.raise(signal.realtime(3))
 end
 
 function Test:test_ev()
     local ev = require "ev"
-    local timer = ev.Timer.new(callback, 0.1, 0.1)
-    timer:start(ev.Loop.default)
+    local watcher = ev.Timer.new(timer_watcher, 0.1, 0.1)
+    watcher:start(ev.Loop.default)
     ev.Loop.default:loop()
 end
 
