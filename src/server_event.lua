@@ -3,6 +3,7 @@ local data_model = require "eiko.data_model"
 local log = require "eiko.logs".defaultLogger()
 local socket = require "socket"
 local config = require "config".server_event
+local mime = require "mime"
 
 local state = nil
 
@@ -126,7 +127,7 @@ local function connect(id)
     pending.id = id
     state.pending[id] = pending
     log:info("authentication token and traffic key generated for " .. pending.id)
-    return pending.authentication_token, pending.traffic_key
+    return pending.authentication_token, mime.b64(pending.traffic_key)
 end
 
 local function send(id, message)
