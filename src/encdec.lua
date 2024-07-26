@@ -3,6 +3,7 @@ bit32 = require "bit32"
 local dmp = require "diff_match_patch"
 local snappy = require "resty.snappy"
 local sodium = require "sodium"
+local mime = require "mime"
 
 local function delta_compress_encode(new, new_counter, previous, previous_counter, key)
     local diffs = dmp.diff_main(previous, new)
@@ -45,6 +46,13 @@ local function decode(noncesecret, key)
     return message
 end
 
+local authentication_key = sodium.crypto_auth_keygen()
+
+local function authentication_token()
+    local nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+    return (mime.b64(nonce .. sodium.crypto_auth(nonce, authentication_key)))
+end
+
 local function authenticate(message, key)
     return message .. sodium.crypto_auth(message, key)
 end
@@ -61,5 +69,6 @@ return {
     delta_compress_encode = delta_compress_encode,
     delta_compress_decode = delta_compress_decode,
     authenticate = authenticate,
-    verify = verify
+    verify = verify,
+    authentication_token = authentication_token
 }

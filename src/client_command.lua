@@ -2,74 +2,92 @@ local socket = require "socket"
 local ev = require "ev"
 local ssl = require "ssl"
 local bit32 = require "bit32"
-local action = require "eiko.client_action"
+local config = require "config".client_command
+local log = require "eiko.logs".defaultLogger()
 
-local server_state = nil
+local state = nil
 
-local client_states = {}
-
-local handshake_timeout_period = 1./100
+local function on_authentication_io_event(peername, loop, io, revents)
+    local client_state = state.clients[peername]
+    local data, err, partial = client_state.client:receive('*l', client_state.buffer)
+    client_state.buffer = partial
+    if err == "wantread" or err == "wantwrite" then
+        return
+    else
+        client_state.io_watcher:stop(ev.Loop.default)
+        client_state.timer_watcher:stop(ev.Loop.default)
+        if data then
+            if client_state.authentication_token == string.sub(data, 1, string.len(client_state.authentication_token)) then
+                remote_authenticate(data)
+                return
+            else
+                log:warn("incorrect authentication token received from " .. peername)    
+            end
+        else
+            log:warn("\"" .. err .. "\" while attempting authentication of " .. peername)
+        end
+    end
+    client_state.client:close()
+    state.clients[peername] = nil    
+end
 
 local function on_client_io_event(peername, loop, io, revents)
-    print("on_client_io_event " .. peername)
-    client_state = client_states[peername]
-
+    local client_state = state.clients[peername]
     local data, err, partial = client_state.client:receive('*l', client_state.buffer)
     client_state.buffer = partial
     print(data, err, partial)
     if data then
-        action.consume(peername, data)
+        consume(peername, data)
     elseif err == "wantread" or err == "wantwrite" then
     else
         client_state.client:close()
         client_state.io_watcher:stop(ev.Loop.default)
-        client_states[peername] = nil
+        state.clients[peername] = nil
     end
 end
 
 local function on_handshake_io_event(peername, loop, io, revents)
-    print("on_handshake_io_event " .. peername)
-    client_state = client_states[peername]
-
+    local client_state = state.clients[peername]
     local success, err = client_state.client:dohandshake()
     print(succes, err)
     if success then
+        log:info("successful tls handshake with " .. peername)
+        client_state.client:settimeout(0)
         local io_event = function(loop, io, revents)
-            on_client_io_event(peername, loop, io, revents)
+            on_authentication_io_event(peername, loop, io, revents)
         end
         local io_watcher = ev.IO.new(io_event, client_state.client:getfd(), ev.READ)
-        client_state.client:settimeout(0)
         client_state.io_watcher:stop(ev.Loop.default)
         client_state.io_watcher = io_watcher
         io_watcher:start(ev.Loop.default)
+        local timer_event = function(loop, io, revents)
+            on_authentication_timeout_event(peername, loop, io, revents)
+        end
+        local timer_watcher = ev.Timer.new(timer_event, config.authentication_period, 0)
+        client_state.timer_watcher:stop(ev.Loop.default)
+        client_state.timer_watcher = io_watcher
+        timer_watcher:start(ev.Loop.default)
+        client_state.authentication_token = encdec.authentication_token()
+        client_state.client:send(client_state.authentication_token)
     elseif err == "wantread" or err == "wantwrite" then
     else
+        log:warn("\"" .. err .. "\" while attempting tls handshake with " .. peername)
         client_state.client:close()
         client_state.io_watcher:stop(ev.Loop.default)
-        client_states[peername] = nil
+        state.clients[peername] = nil
     end
 end
 
-local params = {
-    mode = "server",
-    protocol = "tlsv1_2",
-    key = "test/ca-key.pem",
-    certificate = "test/ca-cert.pem",
-    verify = "none",
-    options = "all"
-}
-
 local function on_server_io_event(loop, io, revents)
-    print("on_server_io_event")
-    local client = server_state.server:accept()
+    local client = state.server:accept()
     local peername = client:getpeername()
-    client = ssl.wrap(client, params)
-    client:settimeout(handshake_timeout_period)
-
+    log:info("connection from unverified " .. peername)
+    client = ssl.wrap(client, config.ssl_params)
+    client:settimeout(config.handshake_timeout_period)
     local success, err = client:dohandshake()
-    print(success, err)
     local io_watcher = nil
     if success then
+        log:info("successful tls handshake with " .. peername)
         local io_event = function(loop, io, revents)
             on_client_io_event(peername, loop, io, revents)
         end
@@ -80,41 +98,38 @@ local function on_server_io_event(loop, io, revents)
         end
         io_watcher = ev.IO.new(io_event, client:getfd(), bit32.bor(ev.READ, ev.WRITE))
     else
+        log:warn("\"" .. err .. "\" while attempting tls handshake with " .. peername)
         client:close()
+        return
     end
-
-    if io_watcher then
-        io_watcher:start(ev.Loop.default)
-        local client_state = {}
-        client_state.client = client
-        client_state.io_watcher = io_watcher
-        client_states[peername] = client_state
-    end
+    io_watcher:start(ev.Loop.default)
+    local client_state = {}
+    client_state.client = client
+    client_state.io_watcher = io_watcher
+    state.clients[peername] = client_state
 end
 
-local function start(host, port)
+local function start()
     local server = socket.tcp()
-    server:bind(host, port)
-    local max_clients = 16
-    server:listen(max_clients)
+    server:bind(config.host, config.port)
+    server:listen(config.max_clients)
     server:settimeout(0)
-    local _server_state = {}
-    _server_state.server = server
+    state = {}
+    state.server = server
     local io_watcher = ev.IO.new(on_server_io_event, server:getfd(), ev.READ)
     io_watcher:start(ev.Loop.default)
-    _server_state.io_watcher = io_watcher
-    server_state = _server_state
+    state.io_watcher = io_watcher
+    state.clients = {}
 end
 
 local function stop()
-    for k, client_state in client_states do
+    for k, client_state in state.clients do
         client_state.io_watcher:stop(ev.Loop.default)
         client_state.client:close()
     end
-    client_states = {}
-    server_state.io_watcher:stop(ev.Loop.default)
-    server_state.server:close()
-    server_state = nil
+    state.io_watcher:stop(ev.Loop.default)
+    state.server:close()
+    state = nil
 end
 
 return {

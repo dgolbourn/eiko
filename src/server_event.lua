@@ -12,11 +12,11 @@ end
 
 local function verify(host, port, data)
     for _, pending in pairs(state.pending) do
-        if encdec.verify(data, pending.authentication_key) then
-            log:info("authenticated " .. pending.id .. " as from route " .. to_peername(host, port))
+        if data == pending.authentication_token then
+            log:info("authenticated " .. pending.id .. " at " .. to_peername(host, port))
             local verified = pending
             state.pending[pending.id] = nil
-            verified.authentication_key = nil
+            verified.authentication_token = nil
             verified.port = port
             verified.host = host
             verified.history = {}
@@ -27,7 +27,7 @@ local function verify(host, port, data)
             return
         end
     end
-    log:warn("unable to authenticate data from route " .. to_peername(host, port))
+    log:warn("unable to authenticate data from " .. to_peername(host, port))
 end
 
 local function decode(verified, data)
@@ -61,7 +61,7 @@ local function consume(host, port, data)
         log:debug("data received from " .. verified.id)
         decode(verified, data)
     else
-        log:debug("data received from unverified route " .. to_peername(host, port))
+        log:debug("data received from unverified " .. to_peername(host, port))
         verify(host, port, data)
     end
 end
@@ -84,7 +84,7 @@ local function produce(id, message)
             end
         end
         local encoded_message = encdec.delta_compress_encode(new, verified.counter, previous, previous_counter, verified.traffic_key)
-        log:debug("delta (" .. verified.counter .. " <- " .. previous_counter .. ") encoded message produced for " .. id .. " to route " .. to_peername(verified.host, verified.port))
+        log:debug("delta (" .. verified.counter .. " <- " .. previous_counter .. ") encoded message produced for " .. id .. " at " .. to_peername(verified.host, verified.port))
         return encoded_message, verified.host, verified.port
     else
         local pending = state.pending[id]
@@ -99,8 +99,8 @@ end
 local function on_timer_event(loop, timer_event)
     local now = os.clock()
     for id, pending in pairs(state.pending) do
-        if now - pending.now > config.authentication_key_period then
-            log:warn("authentication key has expired for " .. pending.id)
+        if now - pending.now > config.authentication_period then
+            log:warn("authentication period has elapsed for " .. pending.id)
             state.pending[id] = nil
         end
     end
@@ -120,13 +120,13 @@ end
 
 local function connect(id)
     local pending = {}
-    pending.authentication_key = sodium.crypto_auth_keygen()
+    pending.authentication_token = encdec.authentication_token()
     pending.traffic_key = sodium.crypto_secretbox_keygen()
     pending.now = os.clock()
     pending.id = id
     state.pending[id] = pending
-    log:info("authentication and traffic keys generated for " .. pending.id)
-    return pending.authentication_key, pending.traffic_key
+    log:info("authentication token and traffic key generated for " .. pending.id)
+    return pending.authentication_token, pending.traffic_key
 end
 
 local function send(id, message)

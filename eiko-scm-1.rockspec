@@ -17,7 +17,9 @@ dependencies = {
    "jsonschema",
    "lualogging",
    "ansicolors",
-   "lyaml"
+   "lyaml",
+   "lua_signal",
+   "lanes"
 }
 description = {}
 build = {
@@ -27,7 +29,6 @@ build = {
          eiko = "src/eiko.lua",
          ["eiko.encdec"] = "src/encdec.lua",
          ["eiko.client_command"] = "src/client_command.lua",
-         ["eiko.client_action"] = "src/client_action.lua",
          ["eiko.game_loop"] = "src/game_loop.lua",
          ["eiko.server_event"] = "src/server_event.lua",
          ["eiko.data_model"] = "src/data_model.lua",

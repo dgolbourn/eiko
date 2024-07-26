@@ -46,4 +46,9 @@ function Test:test_auth_verify()
     lu.assertEquals(is_verified, true)
 end
 
+function Test:test_authentication_token()
+    local encdec = require "eiko.encdec"
+    print(encdec.authentication_token())
+end
+
 os.exit(lu.LuaUnit.run())
