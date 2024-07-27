@@ -70,7 +70,7 @@ local function consume(host, port, data)
 end
 
 local function produce(id, message)
-    local verified = state.verified[verified.id]
+    local verified = state.verified[id]
     if verified then
         verified.counter = verified.counter + 1
         local new = message
@@ -96,7 +96,7 @@ local function produce(id, message)
             return
         end
     end
-    log:error("no pending or verified route for " .. pending.id)
+    log:error("no pending or verified route for " .. id)
 end
 
 local function on_timer_event(loop, timer_event)
@@ -142,7 +142,7 @@ local function connect(incoming_event)
     local event = {
         kind = itc_events.server_event_connection_response,
         message = {
-            id = pending.id
+            id = pending.id,
             authentication_token = pending.authentication_token,
             traffic_key = pending.traffic_key
         }
@@ -161,6 +161,7 @@ local function send(event)
 end
 
 local function start()
+    log:info("starting server event")
     local timer = ev.Timer.new(on_timer_event, config.key_expiry_check_period, config.key_expiry_check_period)
     timer:start(ev.Loop.default)
     state = {}
@@ -176,10 +177,11 @@ local function start()
     state.io_watcher = io_watcher
     local signal_watcher = ev.Signal.new(on_signal_event, signal.realtime(config.itc_channel))
     state.signal_watcher = signal_watcher
-    signal_watcher:start(ev.Loop.default)    
+    signal_watcher:start(ev.Loop.default)   
 end
 
 local function stop()
+    log:info("stopping server event")
     state.io_watcher:stop(ev.Loop.default)
     state.udp:close()
     state.timer:stop(ev.Loop.default)

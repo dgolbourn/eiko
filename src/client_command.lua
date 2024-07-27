@@ -2,13 +2,15 @@ local socket = require "socket"
 local ev = require "ev"
 local ssl = require "ssl"
 local bit32 = require "bit32"
-local config = require "config".client_command
+local game_config = require "config".game
+local client_command_config = require "config".client_command
 local remote_authenticator_config = require "config".remote_authenticator
 local itc_events = require "config".itc_events
 local log = require "eiko.logs".defaultLogger()
 local signal = require "signals"
 local context = require "context"
 local server_event = require "eiko.server_event"
+local data_model = require "eiko.data_model"
 
 local state = nil
 
@@ -24,7 +26,7 @@ local function on_authentication_io_event(peername, loop, io, revents)
             if client_state.authentication_token == string.sub(data, 1, string.len(client_state.authentication_token)) then
                 log:info("verifying " .. peername)
                 local event = {
-                    kind = itc_events.remote_authenticator_verify_request
+                    kind = itc_events.remote_authenticator_verify_request,
                     message = {
                         peername = peername,
                         authentication_token = data
@@ -49,9 +51,19 @@ local function on_client_io_event(peername, loop, io, revents)
     local client_state = state.clients[peername]
     local data, err, partial = client_state.client:receive('*l', client_state.buffer)
     client_state.buffer = partial
-    print(data, err, partial)
     if data then
-        consume(peername, data)
+        local commands = data_model.command(data)
+        if commands then
+            log:debug("commands received from " .. verified.id)
+            local event = {
+                kind = itc_events.game_command_request,
+                message = commands
+            }
+            context:send(nil, game_config.itc_channel, event)
+            signal.raise(signal.realtime(game_config.itc_channel))
+        else
+            log:error("invalid format for data from " .. verified.id)
+        end
     elseif err == "wantread" or err == "wantwrite" then
     else
         client_state.client:close()
@@ -87,7 +99,7 @@ local function on_handshake_io_event(peername, loop, io, revents)
         local timer_event = function(loop, io, revents)
             on_authentication_timeout_event(peername, loop, io, revents)
         end
-        local timer_watcher = ev.Timer.new(timer_event, config.authentication_period, 0)
+        local timer_watcher = ev.Timer.new(timer_event, client_command_config.authentication_period, 0)
         client_state.timer_watcher:stop(ev.Loop.default)
         client_state.timer_watcher = timer_watcher
         timer_watcher:start(ev.Loop.default)
@@ -104,7 +116,7 @@ local function on_handshake_io_event(peername, loop, io, revents)
 end
 
 local function on_server_signal_event(loop, sig, revents)
-    local key, event = context:receive(nil, config.itc_channel)
+    local key, event = context:receive(nil, client_command_config.itc_channel)
     if event.kind == itc_events.remote_authenticator_verify_response then
         local message = event.message
         local client_state = state.clients[message.peername]
@@ -124,7 +136,7 @@ local function on_server_signal_event(loop, sig, revents)
         else
             log:warn("no pending verification for " .. message.peername)
         end
-    else event.kind == itc_events.server_event_connection_response then
+    elseif event.kind == itc_events.server_event_connection_response then
         local message = event.message
         local client_state = state.clients[message.peername]
         if client_state then
@@ -135,7 +147,7 @@ local function on_server_signal_event(loop, sig, revents)
             log:warn("no pending verification for " .. message.peername)
         end
     else
-        log:error("unknown event kind \"" .. event.kind .. "\" received on " .. config.itc_channel)
+        log:error("unknown event kind \"" .. event.kind .. "\" received on " .. client_command_config.itc_channel)
     end
 end
 
@@ -143,7 +155,7 @@ local function on_server_io_event(loop, io, revents)
     local client = state.server:accept()
     local peername = client:getpeername()
     log:info("connection from unverified " .. peername)
-    client = ssl.wrap(client, config.ssl_params)
+    client = ssl.wrap(client, client_command_config.ssl_params)
     client:settimeout(config.handshake_timeout_period)
     local success, err = client:dohandshake()
     local io_watcher = nil
@@ -171,23 +183,26 @@ local function on_server_io_event(loop, io, revents)
 end
 
 local function start()
+    log:info("starting client command")
     local server = socket.tcp()
-    server:bind(config.host, config.port)
-    server:listen(config.max_clients)
+    server:bind(client_command_config.host, client_command_config.port)
+    server:listen(client_command_config.max_clients)
     server:settimeout(0)
     state = {}
     state.server = server
     local io_watcher = ev.IO.new(on_server_io_event, server:getfd(), ev.READ)
     io_watcher:start(ev.Loop.default)
     state.io_watcher = io_watcher
-    local signal_watcher = ev.Signal.new(on_server_signal_event, signal.realtime(config.signal))
+    local signal_watcher = ev.Signal.new(on_server_signal_event, signal.realtime(client_command_config.itc_channel))
     state.signal_watcher = signal_watcher
     signal_watcher:start(ev.Loop.default)
     state.clients = {}
 end
 
 local function stop()
-    for k, client_state in state.clients do
+    log:info("stopping client command")
+    for k, client_state in pairs(state.clients) do
+        client_state.timer_watcher:stop(ev.Loop.default)
         client_state.io_watcher:stop(ev.Loop.default)
         client_state.client:close()
     end

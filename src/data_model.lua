@@ -17,5 +17,6 @@ local function json_schema_validator(schema_path)
 end
 
 return {
-    ack = json_schema_validator("res/ack.json")
+    ack = json_schema_validator("res/ack.json"),
+    command = json_schema_validator("res/command.json")
 }

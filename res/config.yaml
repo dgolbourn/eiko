@@ -23,9 +23,12 @@ client_command:
   authentication_period : 30
   itc_channel: 1
 
-remote_authentication:
+remote_authenticator:
   itc_channel: 2
   verify_url: https://localhost/server/verify
+
+game:
+  itc_channel: 4
 
 itc_events:
   remote_authenticator_verify_request: 1
@@ -33,3 +36,4 @@ itc_events:
   server_event_connection_request: 3
   server_event_connection_response: 4
   server_event_send_request: 5
+  game_command_request: 6
