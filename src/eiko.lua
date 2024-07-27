@@ -1,14 +1,34 @@
-local ev = require "ev"
-local se = require "eiko.server_event"
+local context = require "context"
+
 local cc = require "eiko.client_command"
-local gl = require "eiko.game_loop"
+cc.start()
 
-cc.start("localhost", 21098)
+local se = require "eiko.server_event"
+se.start()
 
-se.start("localhost", 21098)
+local ra = require "eiko.remote_authenticator"
+ra.start()
 
-local game_loop_period = 1./40
-local game_loop_timer = ev.Timer.new(gl.callback, game_loop_period, game_loop_period)
-game_loop_timer:start(ev.Loop.default)
+local game = require "eiko.game"
+game.start()
+
+local ev = require "ev"
+
+local function on_sigint_event(loop, sig, revents)
+    ra.stop()
+    se.stop()
+    cc.stop()
+    game.stop()
+    ev.Loop.default:unloop()
+end
+local signal_watcher = ev.Signal.new(on_sigint_event, signal.SIGINT)
+signal_watcher:start(ev.Loop.default)
+
+-- local function on_idle_event(loop, idle, revents)
+--     print("idle")
+--     collectgarbage()
+-- end
+-- local idle_watcher = ev.Idle.new(on_idle_event)
+-- idle_watcher:start(ev.Loop.default)
 
 ev.Loop.default:loop()

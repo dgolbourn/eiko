@@ -2,3 +2,5 @@ libssl-dev
 libsodium-dev
 libsnappy-dev
 libev-dev
+libpcre3-dev
+libyaml-dev

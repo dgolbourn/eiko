@@ -1,0 +1,39 @@
+---
+server_event:
+  key_expiry_check_period : 1
+  message_history_depth : 20
+  authentication_period : 30
+  traffic_key_period : 86400
+  host: localhost
+  port: 21098
+  itc_channel: 3
+
+client_command:
+  ssl_params :
+      mode : server,
+      protocol : tlsv1_2,
+      key : test/ca-key.pem,
+      certificate : test/ca-cert.pem,
+      verify : none,
+      options : all
+  handshake_timeout_period : 0.01
+  max_clients : 16
+  host: localhost
+  port: 21098
+  authentication_period : 30
+  itc_channel: 1
+
+remote_authenticator:
+  itc_channel: 2
+  verify_url: https://localhost/server/verify
+
+game:
+  itc_channel: 4
+
+itc_events:
+  remote_authenticator_verify_request: 1
+  remote_authenticator_verify_response: 2
+  server_event_connection_request: 3
+  server_event_connection_response: 4
+  server_event_send_request: 5
+  game_command_request: 6

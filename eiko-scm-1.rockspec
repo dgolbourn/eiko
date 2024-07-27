@@ -14,6 +14,12 @@ dependencies = {
    "diff_match_patch",
    "lua-cjson",
    "lua-ev",
+   "jsonschema",
+   "lualogging",
+   "ansicolors",
+   "lyaml",
+   "lua_signal",
+   "lanes"
 }
 description = {}
 build = {
@@ -23,10 +29,17 @@ build = {
          eiko = "src/eiko.lua",
          ["eiko.encdec"] = "src/encdec.lua",
          ["eiko.client_command"] = "src/client_command.lua",
-         ["eiko.game_loop"] = "src/game_loop.lua",
+         ["eiko.game"] = "src/game.lua",
          ["eiko.server_event"] = "src/server_event.lua",
+         ["eiko.data_model"] = "src/data_model.lua",
+         ["eiko.logs"] = "src/logs.lua",
+         ["eiko.config"] = "src/config.lua",
+         ["eiko.context"] = "src/context.lua",
+         ["eiko.signals"] = "src/signals.lua",
+         ["eiko.remote_authenticator"] = "src/remote_authenticator.lua",
       }
-   }
+   },
+   copy_directories = {"res"}
 }
 test = {
    type = "command",
