@@ -24,7 +24,7 @@ local function on_authentication_io_event(peername, loop, io, revents)
             if client_state.authentication_token == string.sub(data, 1, string.len(client_state.authentication_token)) then
                 log:info("verifying " .. peername)
                 local event = {
-                    kind = "authentication"
+                    kind = itc_events.remote_authenticator_verify_request
                     message = {
                         peername = peername,
                         authentication_token = data
@@ -127,13 +127,13 @@ local function on_server_signal_event(loop, sig, revents)
     else event.kind == itc_events.server_event_connection_response then
         local message = event.message
         local client_state = state.clients[message.peername]
-        if client_state then        
+        if client_state then
             client_state.client.send(message.authentication_token)
             client_state.client.send(message.traffic_key)
             log:info("sent authentication token and traffic key to " .. client_state.id)
         else
             log:warn("no pending verification for " .. message.peername)
-        end        
+        end
     else
         log:error("unknown event kind \"" .. event.kind .. "\" received on " .. config.itc_channel)
     end

@@ -125,7 +125,7 @@ local function on_signal_event(loop, sig, revents)
     local key, event = context:receive(nil, config.itc_channel)
     if event.kind == itc_events.server_event_connection_request then
         connect(event.message)
-    elseif event.kind = itc_events.server_event_send_request then
+    elseif event.kind == itc_events.server_event_send_request then
         send(event.message)
     else
         log:error("unknown event kind \"" .. event.kind .. "\" received on " .. config.itc_channel)
@@ -140,7 +140,7 @@ local function connect(incoming_event)
     pending.id = incoming_event.id
     state.pending[pending.id] = pending
     local event = {
-        kind = "server event connection response",
+        kind = itc_events.server_event_connection_response,
         message = {
             id = pending.id
             authentication_token = pending.authentication_token,
