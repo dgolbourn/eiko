@@ -17,21 +17,18 @@ end
 
 function Test:test_delta_compress_enc_dec()
     local encdec = require "eiko.encdec"
-    local cjson = require "cjson"
     local sodium = require "sodium"
-    local payload = {a={"blah"}}
-    local previous = [[{"a":["foo"]}]]
+    local new = "asdsfsdfsdfsdfsdgdgsdgsdgsdgasgsd the quick brown fox jumped over the lazy dog"
+    local previous = "asdsfsdfsdfsdfsdgdgsdgsdgsdgasgsd the lazy dog did not jump over the quick brown fox"
     local key = sodium.crypto_secretbox_keygen()
-    local new = cjson.encode(payload)
     local new_counter = 1
     local previous_counter = 0
     local noncesecret = encdec.delta_compress_encode(new, new_counter, previous, previous_counter, key)
     local previous_map = {}
     previous_map[previous_counter] = previous
     local decoded_new, decoded_new_counter = encdec.delta_compress_decode(noncesecret, previous_map, key)
-    local decoded_payload = cjson.decode(decoded_new)
     lu.assertEquals(new_counter, decoded_new_counter)
-    lu.assertEquals(payload, decoded_payload)
+    lu.assertEquals(new, decoded_new)
 end
 
 function Test:test_auth_verify()

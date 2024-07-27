@@ -3,6 +3,8 @@ local ev = require "ev"
 local ssl = require "ssl"
 local bit32 = require "bit32"
 local config = require "config".client_command
+local remote_authenticator_config = require "config".remote_authenticator
+local itc_events = require "config".itc_events
 local log = require "eiko.logs".defaultLogger()
 local signal = require "signals"
 local context = require "context"
@@ -21,7 +23,15 @@ local function on_authentication_io_event(peername, loop, io, revents)
         if data then
             if client_state.authentication_token == string.sub(data, 1, string.len(client_state.authentication_token)) then
                 log:info("verifying " .. peername)
-                remote_authentication(data)
+                local event = {
+                    kind = "authentication"
+                    message = {
+                        peername = peername,
+                        authentication_token = data
+                    }
+                }
+                context:send(nil, remote_authenticator_config.itc_channel, event)
+                signal.raise(signal.realtime(remote_authenticator_config.itc_channel))
                 return
             else
                 log:warn("incorrect authentication token received from " .. peername)
@@ -83,6 +93,7 @@ local function on_handshake_io_event(peername, loop, io, revents)
         timer_watcher:start(ev.Loop.default)
         client_state.authentication_token = encdec.authentication_token()
         client_state.client:send(client_state.authentication_token)
+        log:info("sent authentication token to " .. peername)
     elseif err == "wantread" or err == "wantwrite" then
     else
         log:warn("\"" .. err .. "\" while attempting tls handshake with " .. peername)
@@ -93,22 +104,38 @@ local function on_handshake_io_event(peername, loop, io, revents)
 end
 
 local function on_server_signal_event(loop, sig, revents)
-    local key, message = context.receive(0, "client_command/authentication")
-    if key then
+    local key, event = context:receive(nil, config.itc_channel)
+    if event.kind == itc_events.remote_authenticator_verify_response then
+        local message = event.message
         local client_state = state.clients[message.peername]
         if client_state then
-            log:info("authenticated " .. message.id .. " at " .. message.peername)
+            log:info("verified " .. message.id .. " at " .. message.peername)
             client_state.id = message.id
             client_state.timer_watcher:stop(ev.Loop.default)
             client_state.io_watcher:start(ev.Loop.default)
-            authentication_token, traffic_key = server_event.connect(id)
-            client_state.client.send(authentication_token)
-            client_state.client.send(traffic_key)
+            local event = {
+                kind = itc_events.server_event_connection_request,
+                message = {
+                    id = client_state.id
+                }
+            }
+            context:send(nil, server_event_config.itc_channel, event)
+            signal.raise(signal.realtime(server_event_config.itc_channel))
         else
             log:warn("no pending verification for " .. message.peername)
         end
+    else event.kind == itc_events.server_event_connection_response then
+        local message = event.message
+        local client_state = state.clients[message.peername]
+        if client_state then        
+            client_state.client.send(message.authentication_token)
+            client_state.client.send(message.traffic_key)
+            log:info("sent authentication token and traffic key to " .. client_state.id)
+        else
+            log:warn("no pending verification for " .. message.peername)
+        end        
     else
-        log:error("no message received after corresponding signal")
+        log:error("unknown event kind \"" .. event.kind .. "\" received on " .. config.itc_channel)
     end
 end
 
@@ -153,7 +180,7 @@ local function start()
     local io_watcher = ev.IO.new(on_server_io_event, server:getfd(), ev.READ)
     io_watcher:start(ev.Loop.default)
     state.io_watcher = io_watcher
-    local signal_watcher = ev.Signal.new(on_server_signal_event, signal.realtime(1))
+    local signal_watcher = ev.Signal.new(on_server_signal_event, signal.realtime(config.signal))
     state.signal_watcher = signal_watcher
     signal_watcher:start(ev.Loop.default)
     state.clients = {}
@@ -165,6 +192,7 @@ local function stop()
         client_state.client:close()
     end
     state.io_watcher:stop(ev.Loop.default)
+    state.signal_watcher:stop(ev.Loop.default)
     state.server:close()
     state = nil
 end

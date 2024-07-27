@@ -6,6 +6,7 @@ server_event:
   traffic_key_period : 86400
   host: localhost
   port: 21098
+  itc_channel: 3
 
 client_command:
   ssl_params :
@@ -18,6 +19,16 @@ client_command:
   handshake_timeout_period : 0.01
   max_clients : 16
   host: localhost
-  port: 21098  
+  port: 21098
   authentication_period : 30
+  itc_channel: 1
 
+remote_authentication:
+  itc_channel: 2
+
+itc_events:
+  remote_authenticator_verify_request: 1
+  remote_authenticator_verify_response: 2
+  server_event_connection_request: 3
+  server_event_connection_response: 4
+  server_event_send_request: 5

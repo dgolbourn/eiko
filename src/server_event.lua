@@ -3,6 +3,8 @@ local data_model = require "eiko.data_model"
 local log = require "eiko.logs".defaultLogger()
 local socket = require "socket"
 local config = require "config".server_event
+local client_command_config = require "config".client_command_config
+local itc_events = require "config".itc_events
 local mime = require "mime"
 
 local state = nil
@@ -119,21 +121,42 @@ local function on_io_event(loop, io, revents)
     consume(host, port, data)
 end
 
-local function connect(id)
+local function on_signal_event(loop, sig, revents)
+    local key, event = context:receive(nil, config.itc_channel)
+    if event.kind == itc_events.server_event_connection_request then
+        connect(event.message)
+    elseif event.kind = itc_events.server_event_send_request then
+        send(event.message)
+    else
+        log:error("unknown event kind \"" .. event.kind .. "\" received on " .. config.itc_channel)
+    end
+end
+
+local function connect(incoming_event)
     local pending = {}
     pending.authentication_token = encdec.authentication_token()
     pending.traffic_key = sodium.crypto_secretbox_keygen()
     pending.now = os.clock()
-    pending.id = id
-    state.pending[id] = pending
+    pending.id = incoming_event.id
+    state.pending[pending.id] = pending
+    local event = {
+        kind = "server event connection response",
+        message = {
+            id = pending.id
+            authentication_token = pending.authentication_token,
+            traffic_key = pending.traffic_key
+        }
+    }
     log:info("authentication token and traffic key generated for " .. pending.id)
-    return pending.authentication_token, mime.b64(pending.traffic_key)
+    context:send(nil, client_command_config.itc_channel, event)
+    signal.raise(signal.realtime(client_command_config.itc_channel))
 end
 
-local function send(id, message)
-    local encoded_message, host, port = produce(id, message)
+local function send(event)
+    local encoded_message, host, port = produce(event.id, event.message)
     if encoded_message then
         state.udp:sendto(encoded_message, host, port)
+        log:debug("message sent to " .. event.id)
     end
 end
 
@@ -151,6 +174,9 @@ local function start()
     io_watcher:start(ev.Loop.default)
     state.udp = udp
     state.io_watcher = io_watcher
+    local signal_watcher = ev.Signal.new(on_signal_event, signal.realtime(config.itc_channel))
+    state.signal_watcher = signal_watcher
+    signal_watcher:start(ev.Loop.default)    
 end
 
 local function stop()
@@ -162,7 +188,5 @@ end
 
 return {
     start = start,
-    stop = stop,
-    connect = connect,
-    send = send
+    stop = stop
 }
