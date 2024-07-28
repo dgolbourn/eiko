@@ -1,19 +1,19 @@
 {
-    "$id": "#ack",
+    "$id": "#command1",
     "$schema": "http://json-schema.org/schema#",
     "type": "object",
     "properties": {
         "_kind": {
             "const": [
-                "ack"
+                "command1"
             ]
         },
-        "counter": {
-            "type": "integer"
+        "foo": {
+            "type": "string"
         }
     },
     "required": [
         "_kind",
-        "counter"
+        "foo"
     ]
 }

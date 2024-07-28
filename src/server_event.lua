@@ -36,20 +36,32 @@ end
 local function decode(verified, data)
     local message = encdec.decode(verified.traffic_key, data)
     if message then
-        local acks = data_model.ack(message)
-        if acks then
-            log:debug("acknowledgement for " .. acks .. " received from " .. verified.id)
-            for ack in acks do
-                if verified.ack < ack.ack then
-                    verified.ack = ack.ack
+        local incoming_event = data_model.event(message)
+        if incoming_event then
+            if incoming_event._kind == "ack" then
+                log:debug("acknowledgement for " .. incoming_event.counter .. " received from " .. verified.id)
+                if verified.ack < incoming_event.counter then
+                    verified.ack = incoming_event.counter
                 end
-            end
-            for counter, previous in pairs(verified.history) do
-                if counter < verified.ack then
-                    verified.history[counter] = nil
+                for counter, previous in pairs(verified.history) do
+                    if counter < verified.ack then
+                        verified.history[counter] = nil
+                    end
                 end
-            end
-            return
+                return
+            elseif incoming_event._kind == "event1" then
+                log:debug("event1 received from " .. verified.id)
+                local event = {
+                    kind = itc_events.game_event_request,
+                    message = incoming_event
+                }
+                context:send(nil, game_config.itc_channel, event)
+                signal.raise(signal.realtime(game_config.itc_channel))
+                return
+            else
+                log:error("unsupported event kind \"" .. incoming_event._kind .. "\" received from " .. verified.id)
+                return
+            end 
         end
         log:error("invalid format for data from " .. verified.id)
         return
