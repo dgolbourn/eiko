@@ -1,14 +1,14 @@
 local verification_request
 repeat
-    local lanes = require "lanes"
     local context = require "context"
+    local lanes = require "lanes"
     local remote_authenticator_verify_response = require "config".itc_events.remote_authenticator_verify_response
     local client_command_itc_channel = require "config".client_command.itc_channel
-    verification_request = lanes.gen('*', {required={"ssl.https", "signal", "ltn12", "cjson"}},
+    verification_request = lanes.gen('*', {required={"ssl.https", "signals", "ltn12", "cjson"}},
         function(url, authentication_token, peername)
             local ltn12 = require 'ltn12'
             local https = require 'ssl.https'
-            local signal = require "signal"
+            local signal = require "signals"
             local json = require "cjson"
             local parts = {}
             local body = json.encode({authentication_token = authentication_token})
@@ -22,7 +22,7 @@ repeat
                 source = ltn12.source.string(body),
                 sink = ltn12.sink.table(parts)
             }
-            if status == 200 then
+            if code == 200 then
                 local response = json.decode(table.concat(parts))
                 local event = {
                     kind = remote_authenticator_verify_response,
