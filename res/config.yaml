@@ -35,5 +35,6 @@ itc_events:
   remote_authenticator_verify_response: 2
   server_event_connection_request: 3
   server_event_connection_response: 4
-  server_event_send_request: 5
+  game_event_response: 5
   game_command_request: 6
+  game_event_request: 7

@@ -53,16 +53,18 @@ local function on_client_io_event(peername, loop, io, revents)
     client_state.buffer = partial
     if data then
         local commands = data_model.command(data)
-        if commands then
-            log:debug("commands received from " .. verified.id)
-            local event = {
-                kind = itc_events.game_command_request,
-                message = commands
-            }
-            context:send(nil, game_config.itc_channel, event)
-            signal.raise(signal.realtime(game_config.itc_channel))
-        else
-            log:error("invalid format for data from " .. verified.id)
+        for _, command in ipairs(commands)
+            if command then
+                log:debug("command received from " .. verified.id)
+                local event = {
+                    kind = itc_events.game_command_request,
+                    message = command
+                }
+                context:send(nil, game_config.itc_channel, event)
+                signal.raise(signal.realtime(game_config.itc_channel))
+            else
+                log:error("invalid format for data from " .. verified.id)
+            end
         end
     elseif err == "wantread" or err == "wantwrite" then
     else

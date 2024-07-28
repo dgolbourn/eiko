@@ -4,9 +4,7 @@
     "type": "object",
     "properties": {
         "_kind": {
-            "const": [
-                "ack"
-            ]
+            "const": "ack"
         },
         "counter": {
             "type": "integer"

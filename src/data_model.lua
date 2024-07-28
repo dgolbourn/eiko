@@ -15,17 +15,22 @@ end
 
 local function json_schema_validator(url)
     local schema = resolver(url)
-    local validator = jsonschema.generate_validator(schema, {external_resolver = resolver})
-    local message_validator = function(text)
-        local json = cjson.decode(text)
-        if validator(json) then
-            return json
+    local validator, err = jsonschema.generate_validator(schema, {external_resolver = resolver})
+    if validator then
+        local message_validator = function(text)
+            local json = cjson.decode(text)
+            local valid, err = validator(json)
+            if valid then
+                return json
+            end
+            return nil, err
         end
+        return message_validator
     end
-    return message_validator
+    return nil, err
 end
 
 return {
-    command = json_schema_validator("root:command"),
-    event = json_schema_validator("root:event"),
+    command = assert(json_schema_validator("root:command")),
+    event = assert(json_schema_validator("root:event")),
 }

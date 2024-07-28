@@ -4,9 +4,7 @@
     "type": "object",
     "properties": {
         "_kind": {
-            "const": [
-                "event1"
-            ]
+            "const": "event1"
         },
         "baz": {
             "type": "string"

@@ -4,9 +4,7 @@
     "type": "object",
     "properties": {
         "_kind": {
-            "const": [
-                "command1"
-            ]
+            "const": "command1"
         },
         "foo": {
             "type": "string"
