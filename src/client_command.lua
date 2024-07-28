@@ -53,7 +53,7 @@ local function on_client_io_event(peername, loop, io, revents)
     client_state.buffer = partial
     if data then
         local commands = data_model.command(data)
-        for _, command in ipairs(commands)
+        for _, command in ipairs(commands) do
             if command then
                 log:debug("command received from " .. verified.id)
                 local event = {
