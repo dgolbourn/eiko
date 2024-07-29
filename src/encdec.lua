@@ -1,4 +1,3 @@
-local cjson = require "cjson"
 bit32 = require "bit32"
 local dmp = require "diff_match_patch"
 local snappy = require "resty.snappy"

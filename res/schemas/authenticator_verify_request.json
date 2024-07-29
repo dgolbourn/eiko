@@ -1,0 +1,26 @@
+{
+    "$id": "#authenticator_verify_request",
+    "$schema": "http://json-schema.org/schema#",
+    "$comment": "object",
+    "type": "object",
+    "properties": {
+        "_kind": {
+            "const": "authenticator_verify_request"
+        },
+        "peername": {
+            "type": "string"
+        },
+        "server_authentication_token": {
+            "type": "string"
+        },
+        "client_authentication_token": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "_kind",
+        "peername",
+        "server_authentication_token",
+        "client_authentication_token"
+    ]
+}

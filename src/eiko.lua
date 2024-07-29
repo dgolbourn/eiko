@@ -1,12 +1,12 @@
 local context = require "context"
 
-local cc = require "eiko.client_command"
+local cc = require "eiko.command"
 cc.start()
 
-local se = require "eiko.server_event"
+local se = require "eiko.event"
 se.start()
 
-local ra = require "eiko.remote_authenticator"
+local ra = require "eiko.authenticator"
 ra.start()
 
 local game = require "eiko.game"

@@ -1,0 +1,22 @@
+{
+    "$id": "#remote_verify_request",
+    "$schema": "http://json-schema.org/schema#",
+    "$comment": "string",
+    "type": "object",
+    "properties": {
+        "_kind": {
+            "const": "remote_verify_request"
+        },
+        "server_authentication_token": {
+            "type": "string"
+        },
+        "client_authentication_token": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "_kind",
+        "server_authentication_token",
+        "client_authentication_token"
+    ]
+}

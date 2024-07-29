@@ -1,0 +1,26 @@
+{
+    "$id": "#event_connection_response",
+    "$schema": "http://json-schema.org/schema#",
+    "$comment": "object",    
+    "type": "object",
+    "properties": {
+        "_kind": {
+            "const": "event_connection_response"
+        },
+        "id": {
+            "type": "string"
+        },
+        "authentication_token": {
+            "type": "string"
+        },
+        "traffic_key": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "_kind",
+        "id",
+        "authentication_token",
+        "traffic_key"
+    ]
+}

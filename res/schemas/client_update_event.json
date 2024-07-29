@@ -1,0 +1,31 @@
+{
+    "$id": "#client_update_event",
+    "$schema": "http://json-schema.org/schema#",
+    "$comment": "string",
+    "type": "object",
+    "properties": {
+        "_kind": {
+            "const": "client_update_event"
+        },
+        "counter": {
+            "type": "integer"
+        },
+        "server_counter" : {
+            "type": "integer"
+        },
+        "actions": {
+            "type": "array",
+            "items": {
+                "anyOf": [
+                    { "$ref": "event1" },
+                    { "$ref": "event2" }                    
+                ]
+            }        
+        }
+    },
+    "required": [
+        "_kind",
+        "counter",
+        "server_counter"
+    ]
+}

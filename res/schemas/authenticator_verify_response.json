@@ -1,0 +1,22 @@
+{
+    "$id": "#authenticator_verify_response",
+    "$schema": "http://json-schema.org/schema#",
+    "$comment": "object",
+    "type": "object",
+    "properties": {
+        "_kind": {
+            "const": "authenticator_verify_response"
+        },
+        "peername": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "_kind",
+        "peername",
+        "id"
+    ]
+}

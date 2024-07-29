@@ -2,9 +2,7 @@ local encdec = require "eiko.encdec"
 local data_model = require "eiko.data_model"
 local log = require "eiko.logs".defaultLogger()
 local socket = require "socket"
-local config = require "config".server_event
-local client_command_config = require "config".client_command_config
-local itc_events = require "config".itc_events
+local config = require "config"
 local mime = require "mime"
 
 local state = nil
@@ -15,7 +13,11 @@ end
 
 local function verify(host, port, data)
     for _, pending in pairs(state.pending) do
-        if data == pending.authentication_token then
+        local incoming_event = encdec.decode(pending.traffic_key, data)
+        local incoming_event, err = data_model.event_authentication_response.decode(incoming_event)
+        if err then
+            log:debug("unable to authenticate data as " .. pending.id .. " at unverified " .. to_peername(host, port))
+        else
             log:info("authenticated " .. pending.id .. " at " .. to_peername(host, port))
             local verified = pending
             state.pending[pending.id] = nil
@@ -25,50 +27,42 @@ local function verify(host, port, data)
             verified.history = {}
             verified.counter = 0
             verified.ack = 0
+            verified.client_counter = 0
             state.verified[to_peername(host, port)] = verified
             state.verified[verified.id] = verified
             return
         end
     end
-    log:warn("unable to authenticate data from " .. to_peername(host, port))
+    log:warn("unable to authenticate data from unverified " .. to_peername(host, port))
 end
 
 local function decode(verified, data)
-    local message = encdec.decode(verified.traffic_key, data)
-    if message then
-        local incoming_events = data_model.event(message)
-        if incoming_events then
-            for _, incoming_event in ipairs(incoming_events) do
-                if incoming_event._kind == "ack" then
-                    log:debug("acknowledgement for " .. incoming_event.counter .. " received from " .. verified.id)
-                    if verified.ack < incoming_event.counter then
-                        verified.ack = incoming_event.counter
-                    end
-                    for counter, previous in pairs(verified.history) do
-                        if counter < verified.ack then
-                            verified.history[counter] = nil
-                        end
-                    end
-                    return
-                elseif incoming_event._kind == "event1" then
-                    log:debug("event1 received from " .. verified.id)
-                    local event = {
-                        kind = itc_events.game_event_request,
-                        message = incoming_event
-                    }
-                    context:send(nil, game_config.itc_channel, event)
-                    signal.raise(signal.realtime(game_config.itc_channel))
-                    return
-                else
-                    log:error("unsupported event kind \"" .. incoming_event._kind .. "\" received from " .. verified.id)
-                    return
+    local incoming_event = encdec.decode(verified.traffic_key, data)
+    local incoming_event, err = data_model.client_update_event.decode(incoming_event)
+    if err then
+        log:warn("\"" .. err .. "\" when decoding data from " .. verified.id)
+    elseif incoming_event.counter <= verified.client_counter then
+        log:debug("discarding out of order event with incoming counter " .. incoming_event.counter .. " <= " .. verified.client_counter .. " from " .. verified.id)
+    elseif incoming_event.server_counter < verified.ack then
+        log:debug("discarding out of date event referring to outgoing counter " .. incoming_event.server_counter .. " < " .. verified.ack .. " from " .. verified.id)
+    elseif incoming_event.server_counter > verified.counter then
+        log:warn("discarding inconsistent event referring to future outgoing counter " .. incoming_event.server_counter .. " > " .. verified.counter .. " from " .. verified.id)
+    else
+        verified.client_counter = incoming_event.counter
+        if incoming_event.server_counter > verified.ack then
+            verified.ack = incoming_event.server_counter
+            for counter, previous in pairs(verified.history) do
+                if counter < verified.ack then
+                    verified.history[counter] = nil
                 end
+            end
+        end
+        if incoming_event.actions then
+            for _, action in ipairs(incoming_event.actions) do
+                -- do something here
             end 
         end
-        log:error("invalid format for data from " .. verified.id)
-        return
     end
-    log:error("unable to decode data from " .. verified.id)
 end
 
 local function consume(host, port, data)
@@ -96,7 +90,7 @@ local function produce(id, message)
             previous_counter = 0
         end
         for counter in pairs(verified.history) do
-            if verified.counter - counter > config.message_history_depth then
+            if verified.counter - counter > config.event.message_history_depth then
                 verified.history[counter] = nil
             end
         end
@@ -116,13 +110,13 @@ end
 local function on_timer_event(loop, timer_event)
     local now = os.clock()
     for id, pending in pairs(state.pending) do
-        if now - pending.now > config.authentication_period then
+        if now - pending.now > config.event.authentication_period then
             log:warn("authentication period has elapsed for " .. pending.id)
             state.pending[id] = nil
         end
     end
     for id, verified in pairs(state.verified) do
-        if now - verified.now > config.traffic_key_period then
+        if now - verified.now > config.event.traffic_key_period then
             log:warn("traffic key has expired for " .. verified.id)
             state.verified[to_peername(verified.host, verified.port)] = nil
             state.verified[verified.id] = nil
@@ -136,13 +130,12 @@ local function on_io_event(loop, io, revents)
 end
 
 local function on_signal_event(loop, sig, revents)
-    local key, event = context:receive(nil, config.itc_channel)
-    if event.kind == itc_events.server_event_connection_request then
-        connect(event.message)
-    elseif event.kind == itc_events.game_event_response then
-        send(event.message)
-    else
-        log:error("unknown event kind \"" .. event.kind .. "\" received on " .. config.itc_channel)
+    local _, incoming_event = context:receive(nil, config.event.itc_channel)
+    local incoming_event, err = data_model.event_connection_request.decode(incoming_event)
+    if err then
+        log:error("\"" .. err .. "\" when decoding data from " .. config.event.itc_channel)
+    else 
+        connect(incoming_event)
     end
 end
 
@@ -154,19 +147,19 @@ local function connect(incoming_event)
     pending.id = incoming_event.id
     state.pending[pending.id] = pending
     local event = {
-        kind = itc_events.server_event_connection_response,
-        message = {
-            id = pending.id,
-            authentication_token = pending.authentication_token,
-            traffic_key = pending.traffic_key
-        }
+        _kind = data_model.event_connection_response.kind,
+        id = pending.id,
+        authentication_token = pending.authentication_token,
+        traffic_key = pending.traffic_key
     }
+    event = data_model.event_connection_response(event)
     log:info("authentication token and traffic key generated for " .. pending.id)
-    context:send(nil, client_command_config.itc_channel, event)
-    signal.raise(signal.realtime(client_command_config.itc_channel))
+    context:send(nil, config.command.itc_channel, event)
+    signal.raise(signal.realtime(config.command.itc_channel))
 end
 
 local function send(event)
+    -- connect this to events from game
     local encoded_message, host, port = produce(event.id, event.message)
     if encoded_message then
         state.udp:sendto(encoded_message, host, port)
@@ -176,7 +169,7 @@ end
 
 local function start()
     log:info("starting server event")
-    local timer = ev.Timer.new(on_timer_event, config.key_expiry_check_period, config.key_expiry_check_period)
+    local timer = ev.Timer.new(on_timer_event, config.event.key_expiry_check_period, config.event.key_expiry_check_period)
     timer:start(ev.Loop.default)
     state = {}
     state.verified = {}
@@ -184,21 +177,27 @@ local function start()
     state.timer = timer
     local udp = socket.udp()
     udp:settimeout(0)
-    udp:setsockname(config.host, config.port)
+    udp:setsockname(config.event.host, config.event.port)
     local io_watcher = ev.IO.new(on_io_event, udp:getfd(), ev.READ)
     io_watcher:start(ev.Loop.default)
     state.udp = udp
     state.io_watcher = io_watcher
-    local signal_watcher = ev.Signal.new(on_signal_event, signal.realtime(config.itc_channel))
+    local signal_watcher = ev.Signal.new(on_signal_event, signal.realtime(config.event.itc_channel))
     state.signal_watcher = signal_watcher
     signal_watcher:start(ev.Loop.default)   
 end
 
 local function stop()
     log:info("stopping server event")
-    state.io_watcher:stop(ev.Loop.default)
-    state.udp:close()
-    state.timer:stop(ev.Loop.default)
+    if state.timer then
+        state.timer:stop(ev.Loop.default)
+    end
+    if state.io_watcher then
+        state.io_watcher:stop(ev.Loop.default)
+    end
+    if state.udp then
+        state.udp:close()
+    end
     state = nil
 end
 

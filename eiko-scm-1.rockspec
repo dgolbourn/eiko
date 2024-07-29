@@ -19,7 +19,8 @@ dependencies = {
    "ansicolors",
    "lyaml",
    "lua_signal",
-   "lanes"
+   "lanes",
+   "luafilesystem"
 }
 description = {}
 build = {
@@ -28,15 +29,15 @@ build = {
       lua = {
          eiko = "src/eiko.lua",
          ["eiko.encdec"] = "src/encdec.lua",
-         ["eiko.client_command"] = "src/client_command.lua",
+         ["eiko.command"] = "src/command.lua",
          ["eiko.game"] = "src/game.lua",
-         ["eiko.server_event"] = "src/server_event.lua",
+         ["eiko.event"] = "src/event.lua",
          ["eiko.data_model"] = "src/data_model.lua",
          ["eiko.logs"] = "src/logs.lua",
          ["eiko.config"] = "src/config.lua",
          ["eiko.context"] = "src/context.lua",
          ["eiko.signals"] = "src/signals.lua",
-         ["eiko.remote_authenticator"] = "src/remote_authenticator.lua",
+         ["eiko.authenticator"] = "src/authenticator.lua",
       }
    },
    copy_directories = {"res"}
