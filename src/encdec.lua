@@ -8,7 +8,7 @@ local function delta_compress_encode(new, new_epoch, previous, previous_epoch, k
     local diffs = dmp.diff_main(previous, new)
     local patches = dmp.patch_make(previous, diffs)
     local text = dmp.patch_toText(patches)
-    local compressed = snappy.compress(epochs .. text)
+    local compressed = snappy.compress(text)
     local epochs = string.format("%016X", new_epoch) .. string.format("%016X", previous_epoch)
     local epochscompressed = epochs .. compressed
     local nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
