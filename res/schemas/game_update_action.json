@@ -1,18 +1,22 @@
 {
-    "$id": "#event2",
+    "$id": "#game_update_action",
     "$schema": "http://json-schema.org/schema#",
-    "$comment": "string",    
+    "$comment": "string",
     "type": "object",
     "properties": {
         "_kind": {
-            "const": "event2"
+            "const": "game_update_action"
         },
-        "foo": {
+        "id": {
             "type": "string"
+        },
+        "action": {
+            "type": "object"
         }
     },
     "required": [
         "_kind",
-        "foo"
+        "id",
+        "action"
     ]
 }

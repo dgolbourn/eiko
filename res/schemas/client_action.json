@@ -1,25 +1,23 @@
 {
-    "$id": "#client_update_event",
+    "$id": "#client_action",
     "$schema": "http://json-schema.org/schema#",
     "$comment": "string",
     "type": "object",
     "properties": {
         "_kind": {
-            "const": "client_update_event"
+            "const": "client_action"
         },
         "actions": {
             "type": "array",
             "items": {
                 "anyOf": [
-                    { "$ref": "event1" },
-                    { "$ref": "event2" }                    
+                    { "$ref": "client_update_action" }
                 ]
             }        
         }
     },
     "required": [
         "_kind",
-        "counter",
         "epoch"
     ]
 }

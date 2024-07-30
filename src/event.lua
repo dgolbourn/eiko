@@ -4,6 +4,8 @@ local log = require "eiko.logs".defaultLogger()
 local socket = require "socket"
 local config = require "config"
 local mime = require "mime"
+local zmq = require "lzmq"
+
 
 local state = nil
 
@@ -45,7 +47,7 @@ local function decode(verified, data)
     elseif epoch > verified.epoch then
         log:warn("discarding inconsistent event referring to future epoch " .. epoch .. " > " .. verified.epoch .. " from " .. verified.id)
     else
-        local incoming_event, err = data_model.client_update_event.decode(incoming_event)
+        local incoming_event, err = data_model.client_action.decode(incoming_event)
         if err then
             log:warn("\"" .. err .. "\" when decoding data from " .. verified.id)
         else
@@ -60,7 +62,13 @@ local function decode(verified, data)
             end
             if incoming_event.actions then
                 for _, action in ipairs(incoming_event.actions) do
-                    -- do something here
+                    local event = {
+                        _kind = data_model.game_update_action.kind,
+                        id = verified.id,
+                        action = action.action
+                    }
+                    event = data_model.game_update_action.encode(event)
+                    state.publisher:send(event)
                 end 
             end
         end
@@ -81,32 +89,23 @@ end
 
 local function produce(id, message)
     local verified = state.verified[id]
-    if verified then
-        verified.epoch = verified.epoch + 1
-        local new = message
-        verified.history[verified.epoch] = new
-        local previous = verified.history[verified.ack]
-        local previous_epoch = verified.ack
-        if previous == nil then
-            previous = ""
-            previous_epoch = 0
-        end
-        for past_epoch, _ in pairs(verified.history) do
-            if verified.epoch - past_epoch > config.event.message_history_depth then
-                verified.history[past_epoch] = nil
-            end
-        end
-        local encoded_message = encdec.delta_compress_encode(new, verified.epoch, previous, previous_epoch, verified.traffic_key)
-        log:debug("delta (" .. verified.epoch .. " <- " .. previous_epoch .. ") encoded message produced for " .. id .. " at " .. to_peername(verified.host, verified.port))
-        return encoded_message, verified.host, verified.port
-    else
-        local pending = state.pending[id]
-        if pending then
-            log:debug("no verified route to produce message for " .. id)
-            return
+    verified.epoch = verified.epoch + 1
+    local new = message
+    verified.history[verified.epoch] = new
+    local previous = verified.history[verified.ack]
+    local previous_epoch = verified.ack
+    if previous == nil then
+        previous = ""
+        previous_epoch = 0
+    end
+    for past_epoch, _ in pairs(verified.history) do
+        if verified.epoch - past_epoch > config.event.message_history_depth then
+            verified.history[past_epoch] = nil
         end
     end
-    log:error("no pending or verified route for " .. id)
+    local encoded_message = encdec.delta_compress_encode(new, verified.epoch, previous, previous_epoch, verified.traffic_key)
+    log:debug("delta (" .. verified.epoch .. " <- " .. previous_epoch .. ") encoded message produced for " .. id .. " at " .. to_peername(verified.host, verified.port))
+    return encoded_message, verified.host, verified.port
 end
 
 local function on_timer_event(loop, timer_event)
@@ -160,12 +159,41 @@ local function connect(incoming_event)
     signal.raise(signal.realtime(config.command.itc_channel))
 end
 
-local function send(event)
-    -- connect this to events from game
-    local encoded_message, host, port = produce(event.id, event.message)
-    if encoded_message then
-        state.udp:sendto(encoded_message, host, port)
-        log:debug("message sent to " .. event.id)
+local function on_ipc_io_event(loop, io, revents)
+    state.ipc_idle_watcher:start(ev.Loop.default)
+    state.ipc_io_watcher:stop(ev.Loop.default)
+end
+
+local function on_ipc_idle_event(loop, idle, revents)
+    if state.subscriber:has_event(zmq.POLLIN) then
+        local incoming_event, err = state.subscriber:recv(zmq.NOBLOCK)
+        if incoming_event then
+            incoming_event, err = data_model.game_update_event.decode()
+            if err then
+                log:warn("\"" .. err .. "\" when decoding data from " .. config.game.ipc_event_channel)
+            else
+                if state.verified[incoming_event.id] then
+                    local event = {
+                        _kind = data_model.server_update_event.kind,
+                        state = incoming_event.event
+                    }
+                    event = data_model.server_update_event.encode(event)
+                    local encoded_message, host, port = produce(incoming_event.id, event)
+                    state.udp:sendto(encoded_message, host, port)
+                    log:debug("message sent to " .. incoming_event.id)
+                elseif state.pending[id] then 
+                    log:debug("no verified route to produce message for " .. incoming_event.id)
+                else
+                    log:debug("no pending or verified route for " .. incoming_event.id)
+                end
+            end
+        elseif err:no() == zmq.errors.EAGAIN then
+        else
+            log:warn("\"" .. err:msg() .. "\" when decoding data from " .. config.game.ipc_event_channel)
+        end
+    else 
+        state.idle_watcher:stop(ev.Loop.default)
+        state.io_watcher:start(ev.Loop.default)
     end
 end
 
@@ -187,6 +215,17 @@ local function start()
     local signal_watcher = ev.Signal.new(on_signal_event, signal.realtime(config.event.itc_channel))
     state.signal_watcher = signal_watcher
     signal_watcher:start(ev.Loop.default)   
+    state.ipc_context = zmq.context{io_threads = 1}
+    state.subscriber = state.ipc_context:socket{zmq.SUB,
+        subscribe = '',
+        connect = config.game.ipc_event_channel
+    }
+    state.ipc_io_watcher = ev.IO.new(on_ipc_io_event, state.subscriber:get_fd(), ev.READ)
+    state.ipc_idle_watcher = ev.Idle.new(on_ipc_idle_event)
+    state.ipc_io_watcher:start(ev.Loop.default)
+    state.publisher = state.ipc_context:socket{zmq.PUB,
+        bind = config.game.ipc_action_channel
+    }
 end
 
 local function stop()
@@ -197,8 +236,23 @@ local function stop()
     if state.io_watcher then
         state.io_watcher:stop(ev.Loop.default)
     end
+    if state.ipc_io_watcher then
+        state.ipc_io_watcher:stop(ev.Loop.default)
+    end
+    if state.ipc_idle_watcher then
+        state.ipc_idle_watcher:stop(ev.Loop.default)
+    end    
     if state.udp then
         state.udp:close()
+    end
+    if state.subscriber then
+        state.subscriber:close()
+    end
+    if state.publisher then
+        state.publisher:close()
+    end    
+    if state.ipc_context then
+        state.ipc_context:shutdown()
     end
     state = nil
 end
