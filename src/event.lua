@@ -13,7 +13,7 @@ end
 
 local function verify(host, port, data)
     for _, pending in pairs(state.pending) do
-        local incoming_event = encdec.decode(pending.traffic_key, data)
+        local incoming_event, _, _ = encdec.decode(pending.traffic_key, data)
         local incoming_event, err = data_model.event_authentication_response.decode(incoming_event)
         if err then
             log:debug("unable to authenticate data as " .. pending.id .. " at unverified " .. to_peername(host, port))
@@ -25,9 +25,9 @@ local function verify(host, port, data)
             verified.port = port
             verified.host = host
             verified.history = {}
-            verified.counter = 0
+            verified.epoch = 0
             verified.ack = 0
-            verified.client_counter = 0
+            verified.counter = 0
             state.verified[to_peername(host, port)] = verified
             state.verified[verified.id] = verified
             return
@@ -37,30 +37,32 @@ local function verify(host, port, data)
 end
 
 local function decode(verified, data)
-    local incoming_event = encdec.decode(verified.traffic_key, data)
-    local incoming_event, err = data_model.client_update_event.decode(incoming_event)
-    if err then
-        log:warn("\"" .. err .. "\" when decoding data from " .. verified.id)
-    elseif incoming_event.counter <= verified.client_counter then
-        log:debug("discarding out of order event with incoming counter " .. incoming_event.counter .. " <= " .. verified.client_counter .. " from " .. verified.id)
-    elseif incoming_event.server_counter < verified.ack then
-        log:debug("discarding out of date event referring to outgoing counter " .. incoming_event.server_counter .. " < " .. verified.ack .. " from " .. verified.id)
-    elseif incoming_event.server_counter > verified.counter then
-        log:warn("discarding inconsistent event referring to future outgoing counter " .. incoming_event.server_counter .. " > " .. verified.counter .. " from " .. verified.id)
+    local incoming_event, counter, epoch = encdec.decode(verified.traffic_key, data)
+    if counter <= verified.counter then
+        log:debug("discarding out of order event with counter " .. counter .. " <= " .. verified.counter .. " from " .. verified.id)
+    elseif epoch < verified.ack then
+        log:debug("discarding out of date event referring to epoch " .. epoch .. " < " .. verified.ack .. " from " .. verified.id)
+    elseif epoch > verified.epoch then
+        log:warn("discarding inconsistent event referring to future epoch " .. epoch .. " > " .. verified.epoch .. " from " .. verified.id)
     else
-        verified.client_counter = incoming_event.counter
-        if incoming_event.server_counter > verified.ack then
-            verified.ack = incoming_event.server_counter
-            for counter, previous in pairs(verified.history) do
-                if counter < verified.ack then
-                    verified.history[counter] = nil
+        local incoming_event, err = data_model.client_update_event.decode(incoming_event)
+        if err then
+            log:warn("\"" .. err .. "\" when decoding data from " .. verified.id)
+        else
+            verified.counter = counter
+            if epoch > verified.ack then
+                verified.ack = epoch
+                for past_epoch, previous in pairs(verified.history) do
+                    if past_epoch < verified.ack then
+                        verified.history[past_epoch] = nil
+                    end
                 end
             end
-        end
-        if incoming_event.actions then
-            for _, action in ipairs(incoming_event.actions) do
-                -- do something here
-            end 
+            if incoming_event.actions then
+                for _, action in ipairs(incoming_event.actions) do
+                    -- do something here
+                end 
+            end
         end
     end
 end
@@ -80,22 +82,22 @@ end
 local function produce(id, message)
     local verified = state.verified[id]
     if verified then
-        verified.counter = verified.counter + 1
+        verified.epoch = verified.epoch + 1
         local new = message
-        verified.history[verified.counter] = new
+        verified.history[verified.epoch] = new
         local previous = verified.history[verified.ack]
-        local previous_counter = verified.ack
+        local previous_epoch = verified.ack
         if previous == nil then
             previous = ""
-            previous_counter = 0
+            previous_epoch = 0
         end
-        for counter in pairs(verified.history) do
-            if verified.counter - counter > config.event.message_history_depth then
-                verified.history[counter] = nil
+        for past_epoch, _ in pairs(verified.history) do
+            if verified.epoch - past_epoch > config.event.message_history_depth then
+                verified.history[past_epoch] = nil
             end
         end
-        local encoded_message = encdec.delta_compress_encode(new, verified.counter, previous, previous_counter, verified.traffic_key)
-        log:debug("delta (" .. verified.counter .. " <- " .. previous_counter .. ") encoded message produced for " .. id .. " at " .. to_peername(verified.host, verified.port))
+        local encoded_message = encdec.delta_compress_encode(new, verified.epoch, previous, previous_epoch, verified.traffic_key)
+        log:debug("delta (" .. verified.epoch .. " <- " .. previous_epoch .. ") encoded message produced for " .. id .. " at " .. to_peername(verified.host, verified.port))
         return encoded_message, verified.host, verified.port
     else
         local pending = state.pending[id]

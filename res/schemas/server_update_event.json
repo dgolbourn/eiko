@@ -7,16 +7,12 @@
         "_kind": {
             "const": "server_update_event"
         },
-        "counter" : {
-            "type": "integer"
-        },
         "state": {
             "type": "object"       
         }
     },
     "required": [
         "_kind",
-        "counter",
         "state"
     ]
 }

@@ -16,7 +16,6 @@ command:
       certificate : test/ca-cert.pem
       verify : none
       options : [all]
-  handshake_timeout_period : 0.01
   max_clients : 16
   host: localhost
   port: 21098

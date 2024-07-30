@@ -7,12 +7,6 @@
         "_kind": {
             "const": "client_update_event"
         },
-        "counter": {
-            "type": "integer"
-        },
-        "server_counter" : {
-            "type": "integer"
-        },
         "actions": {
             "type": "array",
             "items": {
@@ -26,6 +20,6 @@
     "required": [
         "_kind",
         "counter",
-        "server_counter"
+        "epoch"
     ]
 }
