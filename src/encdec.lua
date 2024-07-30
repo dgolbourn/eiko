@@ -14,7 +14,8 @@ local function delta_compress_encode(new, new_epoch, previous, previous_epoch, k
     local nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
     local secret = sodium.crypto_secretbox_easy(epochscompressed, nonce, key)
     local noncesecret = nonce .. secret
-    return noncesecretend
+    return noncesecret
+end
 
 local function delta_compress_decode(noncesecret, previous_map, key)
     local nonce = string.sub(noncesecret, 1, sodium.crypto_secretbox_NONCEBYTES)
