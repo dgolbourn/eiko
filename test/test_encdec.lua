@@ -12,8 +12,8 @@ function Test:test_enc_dec()
     local counter = 1
     local epoch = 2
     local noncesecret = encdec.encode(new, counter, epoch, key)
-    local decoded_new = encdec.decode(noncesecret, key)
-    local decoded_payload, decoded_counter, decoded_epoch = cjson.decode(decoded_new)
+    local decoded_new, decoded_counter, decoded_epoch = encdec.decode(noncesecret, key)
+    local decoded_payload = cjson.decode(decoded_new)
     lu.assertEquals(payload, decoded_payload)
     lu.assertEquals(counter, decoded_counter)
     lu.assertEquals(epoch, decoded_epoch)
