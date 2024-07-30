@@ -4,3 +4,4 @@ libsnappy-dev
 libev-dev
 libpcre3-dev
 libyaml-dev
+libzmq3-dev

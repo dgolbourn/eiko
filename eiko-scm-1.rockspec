@@ -20,7 +20,8 @@ dependencies = {
    "lyaml",
    "lua_signal",
    "lanes",
-   "luafilesystem"
+   "luafilesystem",
+   "lzmq"
 }
 description = {}
 build = {
