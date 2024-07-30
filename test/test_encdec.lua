@@ -9,10 +9,14 @@ function Test:test_enc_dec()
     local payload = {a={"blah"}}
     local key = sodium.crypto_secretbox_keygen()
     local new = cjson.encode(payload)
-    local noncesecret = encdec.encode(new, key)
+    local counter = 1
+    local epoch = 2
+    local noncesecret = encdec.encode(new, counter, epoch, key)
     local decoded_new = encdec.decode(noncesecret, key)
-    local decoded_payload = cjson.decode(decoded_new)
+    local decoded_payload, decoded_counter, decoded_epoch = cjson.decode(decoded_new)
     lu.assertEquals(payload, decoded_payload)
+    lu.assertEquals(counter, decoded_counter)
+    lu.assertEquals(epoch, decoded_epoch)
 end
 
 function Test:test_delta_compress_enc_dec()
