@@ -1,0 +1,23 @@
+{
+    "$id": "#client_action",
+    "$schema": "http://json-schema.org/schema#",
+    "$comment": "string",
+    "type": "object",
+    "properties": {
+        "_kind": {
+            "const": "client_action"
+        },
+        "actions": {
+            "type": "array",
+            "items": {
+                "anyOf": [
+                    { "$ref": "client_update_action" }
+                ]
+            }        
+        }
+    },
+    "required": [
+        "_kind",
+        "epoch"
+    ]
+}

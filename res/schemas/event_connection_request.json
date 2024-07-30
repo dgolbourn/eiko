@@ -1,17 +1,18 @@
 {
-    "$id": "#command1",
+    "$id": "#event_connection_request",
     "$schema": "http://json-schema.org/schema#",
+    "$comment": "object",    
     "type": "object",
     "properties": {
         "_kind": {
-            "const": "command1"
+            "const": "event_connection_request"
         },
-        "foo": {
+        "id": {
             "type": "string"
         }
     },
     "required": [
         "_kind",
-        "foo"
+        "id"
     ]
 }

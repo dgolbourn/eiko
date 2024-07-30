@@ -1,17 +1,18 @@
 {
-    "$id": "#ack",
+    "$id": "#client_update_action",
     "$schema": "http://json-schema.org/schema#",
+    "$comment": "string",
     "type": "object",
     "properties": {
         "_kind": {
-            "const": "ack"
+            "const": "client_update_action"
         },
-        "counter": {
-            "type": "integer"
+        "action": {
+            "type": "object"
         }
     },
     "required": [
         "_kind",
-        "counter"
+        "action"
     ]
 }

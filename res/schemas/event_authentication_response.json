@@ -1,17 +1,18 @@
 {
-    "$id": "#command2",
+    "$id": "#event_authentication_response",
     "$schema": "http://json-schema.org/schema#",
+    "$comment": "string",
     "type": "object",
     "properties": {
         "_kind": {
-            "const": "command2"
+            "const": "event_authentication_response"
         },
-        "bar": {
+        "authentication_token": {
             "type": "string"
         }
     },
     "required": [
         "_kind",
-        "bar"
+        "authentication_token"
     ]
 }

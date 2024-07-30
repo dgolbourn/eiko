@@ -1,0 +1,9 @@
+{
+    "$id": "#command_itc_event",
+    "$schema": "http://json-schema.org/schema#",
+    "$comment": "object",    
+    "anyOf": [
+        { "$ref": "authenticator_verify_response" },
+        { "$ref": "event_connection_response" }
+    ]
+}
