@@ -1,18 +1,14 @@
 {
-    "$id": "#command2",
+    "$id": "#client_ack_action",
     "$schema": "http://json-schema.org/schema#",
     "$comment": "string",
     "type": "object",
     "properties": {
         "_kind": {
-            "const": "command2"
-        },
-        "bar": {
-            "type": "string"
+            "const": "client_ack_action"
         }
     },
     "required": [
-        "_kind",
-        "bar"
+        "_kind"
     ]
 }

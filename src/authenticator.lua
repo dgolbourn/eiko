@@ -14,21 +14,19 @@ local verification_request = lanes.gen('*',
         if err then
             log:error("\"" .. err .. "\" when decoding data from " .. config.authenticator.itc_channel)
         else
-            local event = {
-                _kind = data_model.remote_verify_request.kind,
+            local event = data_model.remote_verify_request.encode{
                 server_authentication_token = incoming_event.server_authentication_token,
                 client_authentication_token = incoming_event.client_authentication_token
             }
-            local body = data_model.remote_verify_request.encode(event)
             local parts = {}
             local status, code, headers = https.request {
                 url = url,
                 method = "POST",
                 headers = {
                         ["Content-Type"] = "application/json",
-                        ["Content-Length"] = #body
+                        ["Content-Length"] = #event
                 },
-                source = ltn12.source.string(body),
+                source = ltn12.source.string(event),
                 sink = ltn12.sink.table(parts)
             }
             if code == 200 then
@@ -36,12 +34,10 @@ local verification_request = lanes.gen('*',
                 local response_event, err = data_model.remote_verify_response.decode(response_event)
                 if response_event then
                     log:info("remote server verified authentication token as " .. response_event.id .. " at " .. peername)
-                    local event = {
-                        _kind = data_model.authenticator_verify_response.kind,
+                    local event = data_model.authenticator_verify_response.encode{
                         peername = incoming_event.peername,
                         id = id
                     }
-                    event = data_model.authenticator_verify_response.encode(event)
                     context:send(nil, config.command.itc_channel, event)
                     signal.raise(signal.realtime(config.command.itc_channel))
                 else

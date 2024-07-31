@@ -60,16 +60,15 @@ local function decode(verified, data)
                     end
                 end
             end
-            if incoming_event.actions then
-                for _, action in ipairs(incoming_event.actions) do
-                    local event = {
-                        _kind = data_model.game_update_action.kind,
-                        id = verified.id,
-                        action = action.action
-                    }
-                    event = data_model.game_update_action.encode(event)
-                    state.publisher:send(event)
-                end 
+            if data_model.client_ack_action.kindof(incoming_event) then
+            elseif if data_model.client_example_action.kindof(incoming_event) then
+                local event = data_model.game_action.encode{
+                    id = verified.id,
+                    action = incoming_event.action
+                }
+                state.publisher:send(event)
+            else
+                log:error("unimplemented action kind " .. incoming_event._kind .. " received from " .. verified.id)
             end
         end
     end
@@ -147,13 +146,11 @@ local function connect(incoming_event)
     pending.now = os.clock()
     pending.id = incoming_event.id
     state.pending[pending.id] = pending
-    local event = {
-        _kind = data_model.event_connection_response.kind,
+    local event = data_model.event_connection_response{
         id = pending.id,
         authentication_token = pending.authentication_token,
         traffic_key = pending.traffic_key
     }
-    event = data_model.event_connection_response(event)
     log:info("authentication token and traffic key generated for " .. pending.id)
     context:send(nil, config.command.itc_channel, event)
     signal.raise(signal.realtime(config.command.itc_channel))
@@ -168,16 +165,14 @@ local function on_ipc_idle_event(loop, idle, revents)
     if state.subscriber:has_event(zmq.POLLIN) then
         local incoming_event, err = state.subscriber:recv(zmq.NOBLOCK)
         if incoming_event then
-            incoming_event, err = data_model.game_update_event.decode()
+            incoming_event, err = data_model.game_event.decode()
             if err then
                 log:warn("\"" .. err .. "\" when decoding data from " .. config.game.ipc_event_channel)
             else
                 if state.verified[incoming_event.id] then
-                    local event = {
-                        _kind = data_model.server_update_event.kind,
+                    local event = data_model.server_event.encode{
                         state = incoming_event.event
                     }
-                    event = data_model.server_update_event.encode(event)
                     local encoded_message, host, port = produce(incoming_event.id, event)
                     state.udp:sendto(encoded_message, host, port)
                     log:debug("message sent to " .. incoming_event.id)

@@ -29,3 +29,4 @@ authenticator:
 game: 
   ipc_event_channel: "ipc://game/event"
   ipc_action_channel: "ipc://game/action"
+  ipc_command_channel: "ipc://game/command"

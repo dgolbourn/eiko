@@ -29,21 +29,28 @@ local function schema_validator(url)
             _decode = cjson.decode
             _encode = cjson.encode
         end
+        local kind = kind(schema)        
+        local encode = function(obj)
+            obj._kind = kind
+            return _encode(obj)
+        end
         local decode = function(message)
-            local json, err = _decode(message)
-            if json then
-                local valid, err = validator(json)
+            local obj, err = _decode(message)
+            if obj then
+                local valid, err = validator(obj)
                 if valid then
-                    return json
+                    return obj
                 end
                 return nil, err
             else 
                 return nil, err                
             end
         end
-        local kind = kind(schema)
+        local kindof = function(obj)
+            return obj._kind == kind
+        end
         log:debug("resolved " .. url)
-        return {decode = decode, encode = _encode, kind = kind}
+        return {decode = decode, encode = encode, kindof = kindof}
     end
     return nil, err
 end

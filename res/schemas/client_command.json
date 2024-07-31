@@ -1,9 +1,8 @@
 {
-    "$id": "#command_client_event",
+    "$id": "#client_command",
     "$schema": "http://json-schema.org/schema#",
     "$comment": "string",    
     "anyOf": [
-        { "$ref": "command1" },
-        { "$ref": "command2" }
+        { "$ref": "client_example_command" }
     ]
 }
