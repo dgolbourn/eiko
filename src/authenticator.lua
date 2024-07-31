@@ -20,7 +20,7 @@ local verification_request = lanes.gen('*',
             }
             local parts = {}
             local status, code, headers = https.request {
-                url = url,
+                url = config.authenticator.verify_url,
                 method = "POST",
                 headers = {
                         ["Content-Type"] = "application/json",
@@ -33,7 +33,7 @@ local verification_request = lanes.gen('*',
                 local response_event = table.concat(parts)
                 local response_event, err = data_model.remote_verify_response.decode(response_event)
                 if response_event then
-                    log:info("remote server verified authentication token as " .. response_event.id .. " at " .. peername)
+                    log:info("remote server verified authentication token as " .. response_event.id .. " at " .. incoming_event.peername)
                     local event = data_model.authenticator_verify_response.encode{
                         peername = incoming_event.peername,
                         id = id
@@ -41,12 +41,12 @@ local verification_request = lanes.gen('*',
                     context:send(nil, config.command.itc_channel, event)
                     signal.raise(signal.realtime(config.command.itc_channel))
                 else
-                    log:warn("\"" .. err .. "\" when decoding data from remote server for " .. peername)
+                    log:warn("\"" .. err .. "\" when decoding data from remote server for " .. incoming_event.peername)
                 end
-            elseif status == 401 then
-                log:warn("remote server did not verify authentication token for " .. peername)
+            elseif code == 401 then
+                log:warn("remote server did not verify authentication token for " .. incoming_event.peername)
             else
-                log:warn("remote server responded with status " .. status .. " for " .. peername)
+                log:warn("remote server responded with \"" .. code .. "\" for " .. incoming_event.peername)
             end
         end
     end
@@ -59,7 +59,7 @@ local ev = require "ev"
 local state = nil
 
 local function on_signal_event(loop, sig, revents)
-    verification_request()
+    print(verification_request()[1])
 end
 
 local function start()

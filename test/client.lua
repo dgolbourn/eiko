@@ -15,10 +15,8 @@ succ, err = conn:dohandshake()
 print(succ)
 print(err)
 
-conn:send('[{"_kind":"command1", "foo":"foo"}]\n')
+conn:send('{"_kind":"client_authentication_reponse","authentication_token": "fsrfrsgsd"}\n')
 
 data = conn:receive('*l')
-
-conn:send(data)
-
+print(data)
 conn:close()

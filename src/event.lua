@@ -61,7 +61,7 @@ local function decode(verified, data)
                 end
             end
             if data_model.client_ack_action.kindof(incoming_event) then
-            elseif if data_model.client_example_action.kindof(incoming_event) then
+            elseif data_model.client_example_action.kindof(incoming_event) then
                 local event = data_model.game_action.encode{
                     id = verified.id,
                     action = incoming_event.action
@@ -187,8 +187,8 @@ local function on_ipc_idle_event(loop, idle, revents)
             log:warn("\"" .. err:msg() .. "\" when decoding data from " .. config.game.ipc_event_channel)
         end
     else 
-        state.idle_watcher:stop(ev.Loop.default)
-        state.io_watcher:start(ev.Loop.default)
+        state.ipc_idle_watcher:stop(ev.Loop.default)
+        state.ipc_io_watcher:start(ev.Loop.default)
     end
 end
 
