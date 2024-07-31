@@ -9,6 +9,7 @@ local context = require "context"
 local event = require "eiko.event"
 local data_model = require "eiko.data_model"
 local encdec = require "eiko.encdec"
+local zmq = require "lzmq"
 
 local state = nil
 
@@ -16,20 +17,18 @@ local function on_authentication_io_event(peername, loop, io, revents)
     local client_state = state.clients[peername]
     local data, err, partial = client_state.client:receive('*l', client_state.buffer)
     client_state.buffer = partial
-    if err == "wantread" or err == "wantwrite" then
+    if err == "timeout" then
         return
     else
         client_state.io_watcher:stop(ev.Loop.default)
         local incoming_event, err = data_model.client_authentication_response.decode(data)
         if incoming_event then
             log:info("verifying " .. peername)
-            local event = {
-                _kind = data_model.authenticator_verify_request.kind,
+            local event = data_model.authenticator_verify_request.encode{
                 peername = peername,
                 server_authentication_token = client_state.authentication_token,
                 client_authentication_token = incoming_event.authentication_token
             }
-            event = data_model.authenticator_verify_request.encode(event)
             context:send(nil, config.authenticator.itc_channel, event)
             signal.raise(signal.realtime(config.authenticator.itc_channel))
             return
@@ -47,21 +46,27 @@ local function on_client_io_event(peername, loop, io, revents)
     local data, err, partial = client_state.client:receive('*l', client_state.buffer)
     client_state.buffer = partial
     if data then
-        local incoming_event, err = data_model.command_client_event.decode(data)
+        local incoming_event, err = data_model.client_command.decode(data)
         if incoming_event then
-            -- do something with the event
+            if data_model.client_example_command.kindof(incoming_event) then
+                local event = data_model.game_command.encode{
+                    id = verified.id,
+                    command = incoming_event.command
+                }
+                state.publisher:send(event)
+            else
+                log:error("unimplemented command kind " .. incoming_event._kind .. " received from " .. client_state.id)
+            end
         else
-            client_state.client:close()
-            client_state.io_watcher:stop(ev.Loop.default)
-            state.clients[peername] = nil
-            log:warn("\"" .. err .. "\" while receiving from " .. peername)                        
+            log:error("\"" .. err .. "\" when decoding data from " .. client_state.id)
         end
-    elseif err == "wantread" or err == "wantwrite" then
+    elseif err == "timeout" then
     else
         client_state.client:close()
         client_state.io_watcher:stop(ev.Loop.default)
         state.clients[peername] = nil
-        log:warn("\"" .. err .. "\" while receiving from " .. peername)
+        state.clients[client_state.id] = nil
+        log:warn("\"" .. err .. "\" while receiving from " .. client_state.id)
     end
 end
 
@@ -82,10 +87,7 @@ local function on_handshake_io_event(peername, loop, io, revents)
         local io_event = function(loop, io, revents)
             on_authentication_io_event(peername, loop, io, revents)
         end
-        local io_watcher = ev.IO.new(io_event, client_state.client:getfd(), ev.READ)
-        client_state.io_watcher:stop(ev.Loop.default)
-        client_state.io_watcher = io_watcher
-        io_watcher:start(ev.Loop.default)
+        client_state.io_watcher:callback(io_event)
         local timer_event = function(loop, io, revents)
             on_authentication_timeout_event(peername, loop, io, revents)
         end
@@ -96,13 +98,12 @@ local function on_handshake_io_event(peername, loop, io, revents)
         client_state.timer_watcher = timer_watcher
         timer_watcher:start(ev.Loop.default)
         client_state.authentication_token = encdec.authentication_token()
-        local event = {
-            _kind = data_model.client_authentication_request.kind,
+        local event = data_model.client_authentication_request.encode{
             authentication_token = client_state.authentication_token
         }
-        client_state.client:send(data_model.client_authentication_request.encode(event))
+        client_state.client:send(event)
         log:info("sent authentication token to " .. peername)
-    elseif err == "wantread" or err == "wantwrite" then
+    elseif err == "timeout" or err == "wantread" or err == "wantwrite" then
     else
         log:warn("\"" .. err .. "\" while attempting tls handshake with " .. peername)
         client_state.client:close()
@@ -116,33 +117,33 @@ local function on_server_signal_event(loop, sig, revents)
     local incoming_event, err = data_model.command_itc_event.decode(incoming_event)
     if err then
         log:error("\"" .. err .. "\" when decoding data from " .. config.command.itc_channel)
-    else 
-        if incoming_event._kind == data_model.authenticator_verify_response.kind then
+    else
+        if data_model.authenticator_verify_response.kindof(incoming_event) then
             local client_state = state.clients[incoming_event.peername]
             if client_state then
                 log:info("verified " .. incoming_event.id .. " at " .. incoming_event.peername)
                 client_state.id = incoming_event.id
                 client_state.timer_watcher:stop(ev.Loop.default)
+                local io_event = function(loop, io, revents)
+                    on_client_io_event(peername, loop, io, revents)
+                end
+                client_state.io_watcher:callback(io_event)
                 client_state.io_watcher:start(ev.Loop.default)
-                local event = {
-                    _kind = data_model.event_connection_request.kind,
+                local event = data_model.event_connection_request.encode{
                     id = client_state.id
                 }
-                event = data_model.event_connection_request.encode(event)
                 context:send(nil, config.event.itc_channel, event)
                 signal.raise(signal.realtime(config.event.itc_channel))
             else
                 log:warn("no pending verification for " .. incoming_event.peername)
             end
-        elseif incoming_event._kind == data_model.event_connection_response.kind then
+        elseif data_model.event_connection_response.kindof(incoming_event) then
             local client_state = state.clients[incoming_event.id]
             if client_state then
-                local event = {
-                    _kind = data_model.event_authentication_request,
+                local event = data_model.event_authentication_request.encode{
                     authentication_token = incoming_event.authentication_token,
                     traffic_key = incoming_event.traffic_key
                 }
-                event = data_model.event_authentication_request.encode(event)
                 client_state.client:send(event)
                 log:info("sent authentication token and traffic key to " .. incoming_event.id)
             else
@@ -187,6 +188,10 @@ local function start()
     local signal_watcher = ev.Signal.new(on_server_signal_event, signal.realtime(config.command.itc_channel))
     state.signal_watcher = signal_watcher
     signal_watcher:start(ev.Loop.default)
+    state.ipc_context = zmq.context{io_threads = 1}
+    state.publisher = state.ipc_context:socket{zmq.PUB,
+        bind = config.game.ipc_command_channel
+    }
     state.clients = {}
 end
 
@@ -209,6 +214,12 @@ local function stop()
     if state.signal_watcher then
         state.signal_watcher:stop(ev.Loop.default)
     end
+    if state.publisher then
+        state.publisher:close()
+    end    
+    if state.ipc_context then
+        state.ipc_context:shutdown()
+    end    
     if state.server then
         state.server:close()
     end
