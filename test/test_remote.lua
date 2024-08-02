@@ -1,5 +1,4 @@
 local lu = require "luaunit"
-local context = require "context"
 local lanes = require "lanes"
 
 Test = {}
@@ -14,14 +13,11 @@ function Test:test_remote()
                 url = url,
                 sink = ltn12.sink.table(parts)
             }
-            print(status, code, headers)
-            if code == 200 then
-                local response = table.concat(parts)
-                return response
-            end
+            return{status=status, code=code, headers=header, body=table.concat(parts)}
         end
     )
-    print(verification_request("https://google.com")[1])
+    local response, err = verification_request("https://www.google.com"):join()
+    lu.assertEquals(response.code, 200)
 end
 
 os.exit(lu.LuaUnit.run())

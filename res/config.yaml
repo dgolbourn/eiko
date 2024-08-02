@@ -6,7 +6,9 @@ event:
   traffic_key_period : 86400
   host: localhost
   port: 21098
-  itc_channel: 3
+  push:
+    command: ipc://event/push/command
+    game: ipc://event/push/game
 
 command:
   ssl_params :
@@ -20,13 +22,18 @@ command:
   host: localhost
   port: 21098
   authentication_period : 30
-  itc_channel: 1
+  push:
+    event: ipc://command/push/event
+    authenticator: ipc://command/push/authenticator
+    game: ipc://command/push/game
 
 authenticator:
-  itc_channel: 2
+  authentication_period : 30
   verify_url: https://localhost/server/verify
+  push:
+    command: ipc://authenticator/push/command
 
-game: 
-  ipc_event_channel: "ipc://game/event"
-  ipc_action_channel: "ipc://game/action"
-  ipc_command_channel: "ipc://game/command"
+game:
+  push:
+    event: ipc://game/push/event
+    command: ipc://game/push/command
