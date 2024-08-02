@@ -1,6 +1,5 @@
-local context = require "context"
-
 local ev = require "ev"
+local signal = require "signal"
 
 local command = require "eiko.command"
 command.start(ev.Loop.default)

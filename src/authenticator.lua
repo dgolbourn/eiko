@@ -3,6 +3,7 @@ local config = require "config"
 local log = require "eiko.logs".defaultLogger()
 local ev = require "ev"
 local data_model = require "eiko.data_model"
+local zmq = require "lzmq"
 
 
 local state = nil
@@ -131,13 +132,13 @@ local function start(loop)
     state.loop = loop or ev.Loop.default
     state.ipc_context = zmq.context{io_threads = 1}
     state.command_puller = state.ipc_context:socket{zmq.PULL,
-        connect = config.command.push.allocator
+        connect = config.command.push.authenticator
     }
     state.command_puller_io_watcher = ev.IO.new(on_command_puller_io_event, state.command_puller:get_fd(), ev.READ)
     state.command_puller_idle_watcher = ev.Idle.new(on_command_puller_idle_event)
     state.command_puller_io_watcher:start(loop)
     state.command_pusher = state.ipc_context:socket{zmq.PUSH,
-        bind = config.allocator.push.command
+        bind = config.authenticator.push.command
     }
     state.pending = {}
 end

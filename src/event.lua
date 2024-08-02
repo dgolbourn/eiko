@@ -213,7 +213,7 @@ local function start(loop)
     state.verified = {}
     state.pending = {}
     state.timer_watcher = ev.Timer.new(on_timer_event, config.event.key_expiry_check_period, config.event.key_expiry_check_period)
-    state.timer_watcher = timer:start(loop)
+    state.timer_watcher = state.timer_watcher:start(loop)
     state.udp = socket.udp()
     state.udp:settimeout(0)
     state.udp:setsockname(config.event.host, config.event.port)
