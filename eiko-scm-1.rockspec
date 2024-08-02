@@ -34,8 +34,9 @@ build = {
          ["eiko.event"] = "src/event.lua",
          ["eiko.data_model"] = "src/data_model.lua",
          ["eiko.logs"] = "src/logs.lua",
+         ["eiko.signals"] = "src/signals.lua",
          ["eiko.config"] = "src/config.lua",
-         ["eiko.authenticator"] = "src/authenticator.lua",
+         ["eiko.authenticator"] = "src/authenticator.lua"
       }
    },
    copy_directories = {"res"}

@@ -8,11 +8,11 @@ local function signal_watcher(loop, sig, revents)
 end
 
 local function timer_watcher(loop, timer, revents)
-    local signal = require "signal"
+    local signal = require "signals"
     timer:stop(ev.Loop.default)
-    local watcher = ev.Signal.new(signal_watcher, 37)
+    local watcher = ev.Signal.new(signal_watcher, signal.realtime(3))
     watcher:start(ev.Loop.default)
-    signal.raise(37)
+    signal.raise(signal.realtime(3))
 end
 
 function Test:test_ev()
