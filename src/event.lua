@@ -124,18 +124,33 @@ local function on_timer_event(loop, timer_event)
     end
 end
 
-local function on_io_event(loop, io, revents)
+local function on_client_io_event(loop, io, revents)
     data, host, port = state.udp:receivefrom()
     consume(host, port, data)
 end
 
-local function on_signal_event(loop, sig, revents)
-    local _, incoming_event = context:receive(nil, config.event.itc_channel)
-    local incoming_event, err = data_model.event_connection_request.decode(incoming_event)
-    if err then
-        log:error("\"" .. err .. "\" when decoding data from " .. config.event.itc_channel)
-    else 
-        connect(incoming_event)
+local function on_command_puller_io_event(loop, io, revents)
+    state.command_puller_idle_watcher:start(loop)
+    state.command_puller_io_watcher:stop(loop)
+end
+
+local function on_command_puller_idle_event(loop, idle, revents)
+    if state.command_puller:has_event(zmq.POLLIN) then
+        local incoming_event, err = state.command_puller:recv(zmq.NOBLOCK)
+        if incoming_event then
+            local incoming_event, err = data_model.event_connection_request.decode(incoming_event)
+            if err then
+                log:warn("\"" .. err .. "\" when decoding data from " .. config.command.push.event)
+            else
+                connect(incoming_event)
+            end
+        elseif err:no() == zmq.errors.EAGAIN then
+        else
+            log:warn("\"" .. err:msg() .. "\" when decoding data from " .. config.command.push.event)
+        end
+    else
+        state.command_puller_idle_watcher:stop(loop)
+        state.command_puller_io_watcher:start(loop)
     end
 end
 
@@ -146,28 +161,27 @@ local function connect(incoming_event)
     pending.now = os.clock()
     pending.id = incoming_event.id
     state.pending[pending.id] = pending
-    local event = data_model.event_connection_response{
+    local event = data_model.event_connection_response.encode{
         id = pending.id,
         authentication_token = pending.authentication_token,
         traffic_key = pending.traffic_key
     }
+    state.command_pusher:send(event)
     log:info("authentication token and traffic key generated for " .. pending.id)
-    context:send(nil, config.command.itc_channel, event)
-    signal.raise(signal.realtime(config.command.itc_channel))
 end
 
-local function on_ipc_io_event(loop, io, revents)
-    state.ipc_idle_watcher:start(ev.Loop.default)
-    state.ipc_io_watcher:stop(ev.Loop.default)
+local function on_game_puller_io_event(loop, io, revents)
+    state.game_puller_idle_watcher:start(loop)
+    state.game_puller_io_watcher:stop(loop)
 end
 
-local function on_ipc_idle_event(loop, idle, revents)
-    if state.subscriber:has_event(zmq.POLLIN) then
-        local incoming_event, err = state.subscriber:recv(zmq.NOBLOCK)
+local function on_game_puller_idle_event(loop, idle, revents)
+    if state.game_puller:has_event(zmq.POLLIN) then
+        local incoming_event, err = state.game_puller:recv(zmq.NOBLOCK)
         if incoming_event then
             incoming_event, err = data_model.game_event.decode()
             if err then
-                log:warn("\"" .. err .. "\" when decoding data from " .. config.game.ipc_event_channel)
+                log:warn("\"" .. err .. "\" when decoding data from " .. config.game.push.event)
             else
                 if state.verified[incoming_event.id] then
                     local event = data_model.server_event.encode{
@@ -176,7 +190,7 @@ local function on_ipc_idle_event(loop, idle, revents)
                     local encoded_message, host, port = produce(incoming_event.id, event)
                     state.udp:sendto(encoded_message, host, port)
                     log:debug("message sent to " .. incoming_event.id)
-                elseif state.pending[id] then 
+                elseif state.pending[id] then
                     log:debug("no verified route to produce message for " .. incoming_event.id)
                 else
                     log:debug("no pending or verified route for " .. incoming_event.id)
@@ -184,68 +198,85 @@ local function on_ipc_idle_event(loop, idle, revents)
             end
         elseif err:no() == zmq.errors.EAGAIN then
         else
-            log:warn("\"" .. err:msg() .. "\" when decoding data from " .. config.game.ipc_event_channel)
+            log:warn("\"" .. err:msg() .. "\" when decoding data from " .. config.game.push.event)
         end
-    else 
-        state.ipc_idle_watcher:stop(ev.Loop.default)
-        state.ipc_io_watcher:start(ev.Loop.default)
+    else
+        state.game_puller_idle_watcher:stop(loop)
+        state.game_puller_io_watcher:start(loop)
     end
 end
 
-local function start()
-    log:info("starting server event")
-    local timer = ev.Timer.new(on_timer_event, config.event.key_expiry_check_period, config.event.key_expiry_check_period)
-    timer:start(ev.Loop.default)
+local function start(loop)
+    log:info("starting event")
     state = {}
+    state.loop = loop or ev.Loop.default
     state.verified = {}
     state.pending = {}
-    state.timer = timer
-    local udp = socket.udp()
-    udp:settimeout(0)
-    udp:setsockname(config.event.host, config.event.port)
-    local io_watcher = ev.IO.new(on_io_event, udp:getfd(), ev.READ)
-    io_watcher:start(ev.Loop.default)
-    state.udp = udp
-    state.io_watcher = io_watcher
-    local signal_watcher = ev.Signal.new(on_signal_event, signal.realtime(config.event.itc_channel))
-    state.signal_watcher = signal_watcher
-    signal_watcher:start(ev.Loop.default)   
+    state.timer_watcher = ev.Timer.new(on_timer_event, config.event.key_expiry_check_period, config.event.key_expiry_check_period)
+    state.timer_watcher = timer:start(loop)
+    state.udp = socket.udp()
+    state.udp:settimeout(0)
+    state.udp:setsockname(config.event.host, config.event.port)
+    state.client_io_watcher = ev.IO.new(on_client_io_event, state.udp:getfd(), ev.READ)
+    state.client_io_watcher:start(loop)
     state.ipc_context = zmq.context{io_threads = 1}
-    state.subscriber = state.ipc_context:socket{zmq.SUB,
-        subscribe = '',
-        connect = config.game.ipc_event_channel
+    state.game_puller = state.ipc_context:socket{zmq.PULL,
+        connect = config.game.push.event
     }
-    state.ipc_io_watcher = ev.IO.new(on_ipc_io_event, state.subscriber:get_fd(), ev.READ)
-    state.ipc_idle_watcher = ev.Idle.new(on_ipc_idle_event)
-    state.ipc_io_watcher:start(ev.Loop.default)
-    state.publisher = state.ipc_context:socket{zmq.PUB,
-        bind = config.game.ipc_action_channel
+    state.game_puller_io_watcher = ev.IO.new(on_game_puller_io_event, state.game_puller:get_fd(), ev.READ)
+    state.game_puller_idle_watcher = ev.Idle.new(on_game_puller_idle_event)
+    state.game_puller_io_watcher:start(loop)
+    state.game_pusher = state.ipc_context:socket{zmq.PUSH,
+        bind = config.event.push.game
+    }
+    state.command_puller = state.ipc_context:socket{zmq.PULL,
+        connect = config.command.push.event
+    }
+    state.command_puller_io_watcher = ev.IO.new(on_command_puller_io_event, state.command_puller:get_fd(), ev.READ)
+    state.command_puller_idle_watcher = ev.Idle.new(on_command_puller_idle_event)
+    state.command_puller_io_watcher:start(loop)
+    state.command_pusher = state.ipc_context:socket{zmq.PUSH,
+        bind = config.event.push.command
     }
 end
 
 local function stop()
-    log:info("stopping server event")
-    if state.timer then
-        state.timer:stop(ev.Loop.default)
+    log:info("stopping event")
+    local loop = state.loop
+    state.loop = nil
+    if state.timer_watcher then
+        state.timer_watcher:stop(loop)
     end
-    if state.io_watcher then
-        state.io_watcher:stop(ev.Loop.default)
+    if state.client_io_watcher then
+        state.client_io_watcher:stop(loop)
     end
-    if state.ipc_io_watcher then
-        state.ipc_io_watcher:stop(ev.Loop.default)
-    end
-    if state.ipc_idle_watcher then
-        state.ipc_idle_watcher:stop(ev.Loop.default)
-    end    
     if state.udp then
         state.udp:close()
     end
-    if state.subscriber then
-        state.subscriber:close()
+    if state.game_puller_io_watcher then
+        state.game_puller_io_watcher:stop(loop)
     end
-    if state.publisher then
-        state.publisher:close()
-    end    
+    if state.game_puller_idle_watcher then
+        state.game_puller_idle_watcher:stop(loop)
+    end
+    if state.game_puller then
+        state.game_puller:close()
+    end
+    if state.game_pusher then
+        state.game_pusher:close()
+    end
+    if state.command_puller_io_watcher then
+        state.command_puller_io_watcher:stop(loop)
+    end
+    if state.command_puller_idle_watcher then
+        state.command_puller_idle_watcher:stop(loop)
+    end
+    if state.command_puller then
+        state.command_puller:close()
+    end
+    if state.command_pusher then
+        state.command_pusher:close()
+    end
     if state.ipc_context then
         state.ipc_context:shutdown()
     end

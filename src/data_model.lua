@@ -55,7 +55,7 @@ local function schema_validator(url)
     return nil, err
 end
 
-function build()
+local function build()
     local data_model = {}
     for file in lfs.dir("res/schemas") do
         if file ~= "." and file ~= ".." then
