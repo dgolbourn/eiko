@@ -31,13 +31,11 @@ build = {
          eiko = "src/eiko.lua",
          ["eiko.encdec"] = "src/encdec.lua",
          ["eiko.command"] = "src/command.lua",
-         ["eiko.game"] = "src/game.lua",
          ["eiko.event"] = "src/event.lua",
          ["eiko.data_model"] = "src/data_model.lua",
          ["eiko.logs"] = "src/logs.lua",
          ["eiko.config"] = "src/config.lua",
          ["eiko.context"] = "src/context.lua",
-         ["eiko.signals"] = "src/signals.lua",
          ["eiko.authenticator"] = "src/authenticator.lua",
       }
    },
