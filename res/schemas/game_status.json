@@ -16,6 +16,6 @@
     },
     "required": [
         "_kind",
-        "command"
+        "status"
     ]
 }
