@@ -26,7 +26,7 @@ local function on_authentication_io_event(peername, loop, io, revents)
                 server_authentication_token = client_state.authentication_token,
                 client_authentication_token = incoming_event.authentication_token
             }
-            state.authenticator_pusher(event)
+            state.authenticator_pusher:send(event)
             return
         else
             log:warn("\"" .. err .. "\" when expecting authentication of " .. peername)
@@ -49,7 +49,7 @@ local function on_client_io_event(peername, loop, io, revents)
                     id = verified.id,
                     command = incoming_event.command
                 }
-                state.publisher:send(event)
+                state.event_pusher:send(event)
             else
                 log:error("unimplemented command kind " .. incoming_event._kind .. " received from " .. client_state.id)
             end
@@ -226,7 +226,7 @@ local function on_new_client_io_event(loop, io, revents)
     client_state.client = client
     client_state.client_io_watcher = ev.IO.new(io_event, client_state.client:getfd(), ev.READ)
     state.clients[peername] = client_state
-    client_io_watcher:start(loop)
+    client_state.client_io_watcher:start(loop)
 end
 
 local function start(loop)

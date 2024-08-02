@@ -4,6 +4,7 @@ local log = require "eiko.logs".defaultLogger()
 local ev = require "ev"
 local data_model = require "eiko.data_model"
 local zmq = require "lzmq"
+local signal = require "eiko.signals"
 
 
 local state = nil
@@ -12,24 +13,28 @@ local function https_response(peername, loop, async, revents)
     local pending_state = state.pending[peername]
     state.pending[peername] = nil
     pending_state.timer_watcher:stop(loop)
-    local response_event, err = pending_state.request:join(0)
+    local response_event, err = pending_state.request:join()
     if response_event then
-        if response_event.code == 200 then
-            local response_event, err = data_model.remote_verify_response.decode(response_event.body)
-            if response_event then
-                log:info("remote server verified authentication token as " .. response_event.id .. " at " .. peername)
-                local event = data_model.authenticator_verify_response.encode{
-                    peername = peername,
-                    id = id
-                }
-                state.command_pusher(event)
+        if response_event.status then
+            if response_event.code == 200 then
+                local response_event, err = data_model.remote_verify_response.decode(response_event.body)
+                if response_event then
+                    log:info("remote server verified authentication token as " .. response_event.id .. " at " .. peername)
+                    local event = data_model.authenticator_verify_response.encode{
+                        peername = peername,
+                        id = id
+                    }
+                    state.command_pusher(event)
+                else
+                    log:warn("\"" .. err .. "\" when decoding data from remote server for " .. peername)
+                end
+            elseif response_event.code == 401 then
+                log:warn("remote server did not verify authentication token for " .. peername)
             else
-                log:warn("\"" .. err .. "\" when decoding data from remote server for " .. peername)
+                log:warn("remote server responded with \"" .. response_event.code .. "\" for " .. peername)
             end
-        elseif response_event.code == 401 then
-            log:warn("remote server did not verify authentication token for " .. peername)
         else
-            log:warn("remote server responded with \"" .. code .. "\" for " .. peername)
+            log:error("remote server request failed with \"" .. response_event.code .. "\" for " .. peername)
         end
     else
         log:error("remote server request failed with \"" .. err .. "\" for " .. peername)
@@ -51,9 +56,9 @@ local function https_request(url, event)
         sink = ltn12.sink.table(parts)
     }
     return {
-        status=status, 
-        code=code, 
-        headers=headers, 
+        status=status,
+        code=code,
+        headers=headers,
         body=table.concat(parts)
     }
 end
@@ -61,14 +66,13 @@ end
 local function on_authentication_timeout_event(peername, loop, io, revents)
     log:warn("authentication period has elapsed for " .. peername)
     local pending_state = state.pending[peername]
-    if pending_state.timer_watcher then
-        pending_state.timer_watcher:stop(loop)
-    end
-    if pending_state.async_watcher then
-        pending_state.async_watcher:stop(loop)
-    end
-    if pending_state.request then
-        pending_state.request:cancel()
+    if pending_state then
+        if pending_state.timer_watcher then
+            pending_state.timer_watcher:stop(loop)
+        end
+        if pending_state.request then
+            pending_state.request:cancel()
+        end
     end
 end
 
@@ -85,35 +89,33 @@ local function on_command_puller_idle_event(loop, idle, revents)
             if err then
                 log:warn("\"" .. err .. "\" when decoding data from " .. config.command.push.allocator)
             else
-                local pending = {}
                 local peername = incoming_event.peername
-                state.pending[peername] = pending
-                function on_response_event(loop, async, revents)
-                    https_response(peername, loop, async, revents)
-                end
-                local async_watcher = ev.Async.new(on_response_event)
+                local realtime_signal = signal.realtime(config.authenticator.realtime_signal)
+                local linda = state.linda
                 local url = config.authenticator.verify_url
                 local event = data_model.remote_verify_request.encode{
                     server_authentication_token = incoming_event.server_authentication_token,
                     client_authentication_token = incoming_event.client_authentication_token
-                }                
+                }
                 function on_request_event()
-                    local status, response = pcall(https_request(url, event))
-                    async_watcher:send(loop)
+                    local signal = require "signal"
+                    local status, response = pcall(https_request, url, event)
+                    linda:send("complete", peername)
+                    signal.raise(realtime_signal)
                     if status then
                         return response
-                    else 
+                    else
                         return nil, response
                     end
                 end
-                pending.async_watcher = async_watcher
-                pending.async_watcher:start(loop)
-                pending.request = lanes.gen('*', on_request_event)()
+                local pending = {}
+                state.pending[peername] = pending
                 local timer_event = function(loop, io, revents)
                     on_authentication_timeout_event(peername, loop, io, revents)
                 end
                 pending.timer_watcher = ev.Timer.new(timer_event, config.authenticator.authentication_period, 0)
                 pending.timer_watcher:start(loop)
+                pending.request = lanes.gen('*', on_request_event)()                
                 log:info("sent verification request to " .. url .. " for " .. peername)
             end
         elseif err:no() == zmq.errors.EAGAIN then
@@ -124,6 +126,11 @@ local function on_command_puller_idle_event(loop, idle, revents)
         state.command_puller_idle_watcher:stop(loop)
         state.command_puller_io_watcher:start(loop)
     end
+end
+
+function on_signal_event(loop, async, revents)
+    local _, peername = state.linda:receive("complete")
+    https_response(peername, loop, async, revents)
 end
 
 local function start(loop)
@@ -140,6 +147,9 @@ local function start(loop)
     state.command_pusher = state.ipc_context:socket{zmq.PUSH,
         bind = config.authenticator.push.command
     }
+    state.signal_watcher = ev.Signal.new(on_signal_event, signal.realtime(config.authenticator.realtime_signal))
+    state.signal_watcher:start(loop)
+    state.linda = lanes.linda()
     state.pending = {}
 end
 
@@ -151,12 +161,15 @@ local function stop()
         if pending_state.timer_watcher then
             pending_state.timer_watcher:stop(loop)
         end
-        if pending_state.async_watcher then
-            pending_state.async_watcher:stop(loop)
-        end
         if pending_state.request then
             pending_state.request:cancel()
         end
+    end
+    if state.signal_watcher then
+        state.signal_watcher:stop(loop)
+    end
+    if state.linda then
+        state.linda:cancel()
     end
     if state.command_puller_io_watcher then
         state.command_puller_io_watcher:stop(loop)

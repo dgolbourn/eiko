@@ -7,8 +7,8 @@ event:
   host: localhost
   port: 21098
   push:
-    command: ipc://event/push/command
-    game: ipc://event/push/game
+    command: ipc://@event/push/command
+    game: ipc://@event/push/game
 
 command:
   ssl_params :
@@ -23,17 +23,18 @@ command:
   port: 21098
   authentication_period : 30
   push:
-    event: ipc://command/push/event
-    authenticator: ipc://command/push/authenticator
-    game: ipc://command/push/game
+    event: ipc://@command/push/event
+    authenticator: ipc://@command/push/authenticator
+    game: ipc://@command/push/game
 
 authenticator:
   authentication_period : 30
   verify_url: https://localhost/server/verify
+  realtime_signal: 1
   push:
-    command: ipc://authenticator/push/command
+    command: ipc://@authenticator/push/command
 
 game:
   push:
-    event: ipc://game/push/event
-    command: ipc://game/push/command
+    event: ipc://@game/push/event
+    command: ipc://@game/push/command

@@ -66,7 +66,7 @@ local function decode(verified, data)
                     id = verified.id,
                     action = incoming_event.action
                 }
-                state.publisher:send(event)
+                state.game_pusher:send(event)
             else
                 log:error("unimplemented action kind " .. incoming_event._kind .. " received from " .. verified.id)
             end
