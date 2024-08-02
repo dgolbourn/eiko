@@ -24,7 +24,7 @@ local function https_response(peername, loop, async, revents)
                         peername = peername,
                         id = id
                     }
-                    state.command_pusher(event)
+                    state.command(event)
                 else
                     log:warn("\"" .. err .. "\" when decoding data from remote server for " .. peername)
                 end
@@ -76,18 +76,18 @@ local function on_authentication_timeout_event(peername, loop, io, revents)
     end
 end
 
-local function on_command_puller_io_event(loop, io, revents)
-    state.command_puller_idle_watcher:start(loop)
-    state.command_puller_io_watcher:stop(loop)
+local function on_command_io_event(loop, io, revents)
+    state.command_idle_watcher:start(loop)
+    state.command_io_watcher:stop(loop)
 end
 
-local function on_command_puller_idle_event(loop, idle, revents)
-    if state.command_puller:has_event(zmq.POLLIN) then
-        local incoming_event, err = state.command_puller:recv(zmq.NOBLOCK)
+local function on_command_idle_event(loop, idle, revents)
+    if state.command:has_event(zmq.POLLIN) then
+        local incoming_event, err = state.command:recv(zmq.NOBLOCK)
         if incoming_event then
             local incoming_event, err = data_model.authenticator_verify_request.decode(incoming_event)
             if err then
-                log:warn("\"" .. err .. "\" when decoding data from " .. config.command.push.allocator)
+                log:warn("\"" .. err .. "\" when decoding data from " .. config.command.pair.allocator)
             else
                 local peername = incoming_event.peername
                 local realtime_signal = signal.realtime(config.authenticator.realtime_signal)
@@ -120,11 +120,11 @@ local function on_command_puller_idle_event(loop, idle, revents)
             end
         elseif err:no() == zmq.errors.EAGAIN then
         else
-            log:warn("\"" .. err:msg() .. "\" when decoding data from " .. config.command.push.allocator)
+            log:warn("\"" .. err:msg() .. "\" when decoding data from " .. config.command.pair.allocator)
         end
     else
-        state.command_puller_idle_watcher:stop(loop)
-        state.command_puller_io_watcher:start(loop)
+        state.command_idle_watcher:stop(loop)
+        state.command_io_watcher:start(loop)
     end
 end
 
@@ -138,15 +138,12 @@ local function start(loop)
     state = {}
     state.loop = loop or ev.Loop.default
     state.ipc_context = zmq.context{io_threads = 1}
-    state.command_puller = state.ipc_context:socket{zmq.PULL,
-        connect = config.command.push.authenticator
+    state.command = state.ipc_context:socket{zmq.PAIR,
+        connect = config.command.pair.authenticator
     }
-    state.command_puller_io_watcher = ev.IO.new(on_command_puller_io_event, state.command_puller:get_fd(), ev.READ)
-    state.command_puller_idle_watcher = ev.Idle.new(on_command_puller_idle_event)
-    state.command_puller_io_watcher:start(loop)
-    state.command_pusher = state.ipc_context:socket{zmq.PUSH,
-        bind = config.authenticator.push.command
-    }
+    state.command_io_watcher = ev.IO.new(on_command_io_event, state.command:get_fd(), ev.READ)
+    state.command_idle_watcher = ev.Idle.new(on_command_idle_event)
+    state.command_io_watcher:start(loop)
     state.signal_watcher = ev.Signal.new(on_signal_event, signal.realtime(config.authenticator.realtime_signal))
     state.signal_watcher:start(loop)
     state.linda = lanes.linda()
@@ -171,17 +168,14 @@ local function stop()
     if state.linda then
         state.linda:cancel()
     end
-    if state.command_puller_io_watcher then
-        state.command_puller_io_watcher:stop(loop)
+    if state.command_io_watcher then
+        state.command_io_watcher:stop(loop)
     end
-    if state.command_puller_idle_watcher then
-        state.command_puller_idle_watcher:stop(loop)
+    if state.command_idle_watcher then
+        state.command_idle_watcher:stop(loop)
     end
-    if state.command_puller then
-        state.command_puller:close()
-    end
-    if state.command_pusher then
-        state.command_pusher:close()
+    if state.command then
+        state.command:close()
     end
     if state.ipc_context then
         state.ipc_context:shutdown()

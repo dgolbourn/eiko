@@ -26,7 +26,7 @@ local function on_authentication_io_event(peername, loop, io, revents)
                 server_authentication_token = client_state.authentication_token,
                 client_authentication_token = incoming_event.authentication_token
             }
-            state.authenticator_pusher:send(event)
+            state.authenticator:send(event)
             return
         else
             log:warn("\"" .. err .. "\" when expecting authentication of " .. peername)
@@ -49,7 +49,7 @@ local function on_client_io_event(peername, loop, io, revents)
                     id = verified.id,
                     command = incoming_event.command
                 }
-                state.event_pusher:send(event)
+                state.event:send(event)
             else
                 log:error("unimplemented command kind " .. incoming_event._kind .. " received from " .. client_state.id)
             end
@@ -108,18 +108,18 @@ local function on_handshake_io_event(peername, loop, io, revents)
     end
 end
 
-local function on_authenticator_puller_io_event(loop, io, revents)
-    state.authenticator_puller_idle_watcher:start(loop)
-    state.authenticator_puller_io_watcher:stop(loop)
+local function on_authenticator_io_event(loop, io, revents)
+    state.authenticator_idle_watcher:start(loop)
+    state.authenticator_io_watcher:stop(loop)
 end
 
-local function on_authenticator_puller_idle_event(loop, idle, revents)
-    if state.authenticator_puller:has_event(zmq.POLLIN) then
-        local incoming_event, err = state.authenticator_puller:recv(zmq.NOBLOCK)
+local function on_authenticator_idle_event(loop, idle, revents)
+    if state.authenticator:has_event(zmq.POLLIN) then
+        local incoming_event, err = state.authenticator:recv(zmq.NOBLOCK)
         if incoming_event then
             local incoming_event, err = data_model.authenticator_verify_response.decode(incoming_event)
             if err then
-                log:warn("\"" .. err .. "\" when decoding data from " .. config.authenticator.push.command)
+                log:warn("\"" .. err .. "\" when decoding data from " .. config.authenticator.pair.command)
             else
                 local client_state = state.clients[incoming_event.peername]
                 if client_state then
@@ -134,33 +134,33 @@ local function on_authenticator_puller_idle_event(loop, idle, revents)
                     local event = data_model.event_connection_request.encode{
                         id = client_state.id
                     }
-                    event_pusher:send(event)
+                    state.event:send(event)
                 else
                     log:warn("no pending verification for " .. incoming_event.peername)
                 end
             end
         elseif err:no() == zmq.errors.EAGAIN then
         else
-            log:warn("\"" .. err:msg() .. "\" when decoding data from " .. config.authenticator.push.command)
+            log:warn("\"" .. err:msg() .. "\" when decoding data from " .. config.authenticator.pair.command)
         end
     else
-        state.authenticator_puller_idle_watcher:stop(loop)
-        state.authenticator_puller_io_watcher:start(loop)
+        state.authenticator_idle_watcher:stop(loop)
+        state.authenticator_io_watcher:start(loop)
     end
 end
 
-local function on_event_puller_io_event(loop, io, revents)
-    state.event_puller_idle_watcher:start(loop)
-    state.event_puller_io_watcher:stop(loop)
+local function on_event_io_event(loop, io, revents)
+    state.event_idle_watcher:start(loop)
+    state.event_io_watcher:stop(loop)
 end
 
-local function on_event_puller_idle_event(loop, idle, revents)
-    if state.event_puller:has_event(zmq.POLLIN) then
-        local incoming_event, err = state.event_puller:recv(zmq.NOBLOCK)
+local function on_event_idle_event(loop, idle, revents)
+    if state.event:has_event(zmq.POLLIN) then
+        local incoming_event, err = state.event:recv(zmq.NOBLOCK)
         if incoming_event then
             local incoming_event, err = data_model.event_connection_response.decode(incoming_event)
             if err then
-                log:warn("\"" .. err .. "\" when decoding data from " .. config.event.push.command)
+                log:warn("\"" .. err .. "\" when decoding data from " .. config.event.pair.command)
             else
                 local client_state = state.clients[incoming_event.id]
                 if client_state then
@@ -176,36 +176,36 @@ local function on_event_puller_idle_event(loop, idle, revents)
             end
         elseif err:no() == zmq.errors.EAGAIN then
         else
-            log:warn("\"" .. err:msg() .. "\" when decoding data from " .. config.event.push.command)
+            log:warn("\"" .. err:msg() .. "\" when decoding data from " .. config.event.pair.command)
         end
     else
-        state.event_puller_idle_watcher:stop(loop)
-        state.event_puller_io_watcher:start(loop)
+        state.event_idle_watcher:stop(loop)
+        state.event_io_watcher:start(loop)
     end
 end
 
-local function on_game_puller_io_event(loop, io, revents)
-    state.game_puller_idle_watcher:start(loop)
-    state.game_puller_io_watcher:stop(loop)
+local function on_game_io_event(loop, io, revents)
+    state.game_idle_watcher:start(loop)
+    state.game_io_watcher:stop(loop)
 end
 
-local function on_game_puller_idle_event(loop, idle, revents)
-    if state.game_puller:has_event(zmq.POLLIN) then
-        local incoming_event, err = state.game_puller:recv(zmq.NOBLOCK)
+local function on_game_idle_event(loop, idle, revents)
+    if state.game:has_event(zmq.POLLIN) then
+        local incoming_event, err = state.game:recv(zmq.NOBLOCK)
         if incoming_event then
             local incoming_event, err = data_model.game_status.decode(incoming_event)
             if err then
-                log:warn("\"" .. err .. "\" when decoding data from " .. config.game.push.command)
+                log:warn("\"" .. err .. "\" when decoding data from " .. config.game.pair.command)
             else
                 -- nothing yet
             end
         elseif err:no() == zmq.errors.EAGAIN then
         else
-            log:warn("\"" .. err:msg() .. "\" when decoding data from " .. config.event.push.command)
+            log:warn("\"" .. err:msg() .. "\" when decoding data from " .. config.event.pair.command)
         end
     else
-        state.game_puller_idle_watcher:stop(loop)
-        state.game_puller_io_watcher:start(loop)
+        state.game_idle_watcher:stop(loop)
+        state.game_io_watcher:start(loop)
     end
 end
 
@@ -240,33 +240,24 @@ local function start(loop)
     state.new_client_io_watcher = ev.IO.new(on_new_client_io_event, state.tcp:getfd(), ev.READ)
     state.new_client_io_watcher:start(loop)
     state.ipc_context = zmq.context{io_threads = 1}
-    state.game_puller = state.ipc_context:socket{zmq.PULL,
-        connect = config.game.push.command
+    state.game = state.ipc_context:socket{zmq.PAIR,
+        connect = config.game.pair.command
     }
-    state.game_puller_io_watcher = ev.IO.new(on_game_puller_io_event, state.game_puller:get_fd(), ev.READ)
-    state.game_puller_idle_watcher = ev.Idle.new(on_game_puller_idle_event)
-    state.game_puller_io_watcher:start(loop)
-    state.game_pusher = state.ipc_context:socket{zmq.PUSH,
-        bind = config.command.push.game
+    state.game_io_watcher = ev.IO.new(on_game_io_event, state.game:get_fd(), ev.READ)
+    state.game_idle_watcher = ev.Idle.new(on_game_idle_event)
+    state.game_io_watcher:start(loop)
+    state.event = state.ipc_context:socket{zmq.PAIR,
+        connect = config.event.pair.command
     }
-    state.event_puller = state.ipc_context:socket{zmq.PULL,
-        connect = config.event.push.command
+    state.event_io_watcher = ev.IO.new(on_event_io_event, state.event:get_fd(), ev.READ)
+    state.event_idle_watcher = ev.Idle.new(on_event_idle_event)
+    state.event_io_watcher:start(loop)
+    state.authenticator = state.ipc_context:socket{zmq.PAIR,
+        bind = config.command.pair.authenticator
     }
-    state.event_puller_io_watcher = ev.IO.new(on_event_puller_io_event, state.event_puller:get_fd(), ev.READ)
-    state.event_puller_idle_watcher = ev.Idle.new(on_event_puller_idle_event)
-    state.event_puller_io_watcher:start(loop)
-    state.event_pusher = state.ipc_context:socket{zmq.PUSH,
-        bind = config.command.push.event
-    }
-    state.authenticator_puller = state.ipc_context:socket{zmq.PULL,
-        connect = config.authenticator.push.command
-    }
-    state.authenticator_puller_io_watcher = ev.IO.new(on_authenticator_puller_io_event, state.authenticator_puller:get_fd(), ev.READ)
-    state.authenticator_puller_idle_watcher = ev.Idle.new(on_authenticator_puller_idle_event)
-    state.authenticator_puller_io_watcher:start(loop)
-    state.authenticator_pusher = state.ipc_context:socket{zmq.PUSH,
-        bind = config.command.push.authenticator
-    }
+    state.authenticator_io_watcher = ev.IO.new(on_authenticator_io_event, state.authenticator:get_fd(), ev.READ)
+    state.authenticator_idle_watcher = ev.Idle.new(on_authenticator_idle_event)
+    state.authenticator_io_watcher:start(loop)
     state.clients = {}
 end
 
@@ -291,41 +282,32 @@ local function stop()
     if state.tcp then
         state.tcp:close()
     end
-    if state.game_puller_io_watcher then
-        state.game_puller_io_watcher:stop(loop)
+    if state.game_io_watcher then
+        state.game_io_watcher:stop(loop)
     end
-    if state.game_puller_idle_watcher then
-        state.game_puller_idle_watcher:stop(loop)
+    if state.game_idle_watcher then
+        state.game_idle_watcher:stop(loop)
     end
-    if state.game_puller then
-        state.game_puller:close()
+    if state.game then
+        state.game:close()
     end
-    if state.game_pusher then
-        state.game_pusher:close()
+    if state.event_io_watcher then
+        state.event_io_watcher:stop(loop)
     end
-    if state.event_puller_io_watcher then
-        state.event_puller_io_watcher:stop(loop)
+    if state.event_idle_watcher then
+        state.event_idle_watcher:stop(loop)
     end
-    if state.event_puller_idle_watcher then
-        state.event_puller_idle_watcher:stop(loop)
+    if state.event then
+        state.event:close()
     end
-    if state.event_puller then
-        state.event_puller:close()
+    if state.authenticator_io_watcher then
+        state.authenticator_io_watcher:stop(loop)
     end
-    if state.event_pusher then
-        state.event_pusher:close()
+    if state.authenticator_idle_watcher then
+        state.authenticator_idle_watcher:stop(loop)
     end
-    if state.authenticator_puller_io_watcher then
-        state.authenticator_puller_io_watcher:stop(loop)
-    end
-    if state.authenticator_puller_idle_watcher then
-        state.authenticator_puller_idle_watcher:stop(loop)
-    end
-    if state.authenticator_puller then
-        state.authenticator_puller:close()
-    end
-    if state.authenticator_pusher then
-        state.authenticator_pusher:close()
+    if state.authenticator then
+        state.authenticator:close()
     end
     if state.ipc_context then
         state.ipc_context:shutdown()

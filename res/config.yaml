@@ -6,9 +6,8 @@ event:
   traffic_key_period : 86400
   host: localhost
   port: 21098
-  push:
-    command: ipc://@event/push/command
-    game: ipc://@event/push/game
+  pair:
+    command: ipc://@event/pair/command
 
 command:
   ssl_params :
@@ -22,19 +21,15 @@ command:
   host: localhost
   port: 21098
   authentication_period : 30
-  push:
-    event: ipc://@command/push/event
-    authenticator: ipc://@command/push/authenticator
-    game: ipc://@command/push/game
+  pair:
+    authenticator: ipc://@command/pair/authenticator
 
 authenticator:
   authentication_period : 30
   verify_url: https://localhost/server/verify
   realtime_signal: 1
-  push:
-    command: ipc://@authenticator/push/command
 
 game:
-  push:
-    event: ipc://@game/push/event
-    command: ipc://@game/push/command
+  pair:
+    event: ipc://@game/pair/event
+    command: ipc://@game/pair/command
