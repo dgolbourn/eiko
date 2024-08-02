@@ -1,5 +1,4 @@
 local lu = require "luaunit"
-local context = require "context"
 local lanes = require "lanes"
 
 Test = {}
