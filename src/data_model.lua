@@ -32,7 +32,7 @@ local function schema_validator(url)
         local kind = kind(schema)        
         local encode = function(obj)
             obj._kind = kind
-            return _encode(obj)
+            return _encode(obj) .. '\n'
         end
         local decode = function(message)
             local obj, err = _decode(message)

@@ -39,30 +39,34 @@ end
 
 local function on_client_io_event(peername, loop, io, revents)
     local client_state = state.clients[peername]
-    local data, err, partial = client_state.client:receive('*l', client_state.buffer)
-    client_state.buffer = partial
-    if data then
-        local incoming_event, err = data_model.client_command.decode(data)
-        if incoming_event then
-            if data_model.client_example_command.kindof(incoming_event) then
-                local event = data_model.game_command.encode{
-                    id = verified.id,
-                    command = incoming_event.command
-                }
-                state.event:send(event)
+    if client_state then
+        local data, err, partial = client_state.client:receive('*l', client_state.buffer)
+        client_state.buffer = partial
+        if data then
+            local incoming_event, err = data_model.client_command.decode(data)
+            if incoming_event then
+                if data_model.client_example_command.kindof(incoming_event) then
+                    local event = data_model.game_command.encode{
+                        id = verified.id,
+                        command = incoming_event.command
+                    }
+                    state.event:send(event)
+                else
+                    log:error("unimplemented command kind " .. incoming_event._kind .. " received from " .. client_state.id)
+                end
             else
-                log:error("unimplemented command kind " .. incoming_event._kind .. " received from " .. client_state.id)
+                log:error("\"" .. err .. "\" when decoding data from " .. client_state.id)
             end
+        elseif err == "timeout" then
         else
-            log:error("\"" .. err .. "\" when decoding data from " .. client_state.id)
+            client_state.client:close()
+            client_state.client_io_watcher:stop(loop)
+            state.clients[peername] = nil
+            state.clients[client_state.id] = nil
+            log:warn("\"" .. err .. "\" while receiving from " .. client_state.id)
         end
-    elseif err == "timeout" then
-    else
-        client_state.client:close()
-        client_state.client_io_watcher:stop(loop)
-        state.clients[peername] = nil
-        state.clients[client_state.id] = nil
-        log:warn("\"" .. err .. "\" while receiving from " .. client_state.id)
+    else 
+        log:warn("no verified client at " .. peername)
     end
 end
 
@@ -119,18 +123,19 @@ local function on_authenticator_idle_event(loop, idle, revents)
         if incoming_event then
             local incoming_event, err = data_model.authenticator_verify_response.decode(incoming_event)
             if err then
-                log:warn("\"" .. err .. "\" when decoding data from " .. config.authenticator.pair.command)
+                log:warn("\"" .. err .. "\" when decoding data from " .. config.command.pair.authenticator)
             else
                 local client_state = state.clients[incoming_event.peername]
                 if client_state then
                     log:info("verified " .. incoming_event.id .. " at " .. incoming_event.peername)
                     client_state.id = incoming_event.id
                     client_state.timer_watcher:stop(loop)
+                    local peername = incoming_event.peername
                     local io_event = function(loop, io, revents)
                         on_client_io_event(peername, loop, io, revents)
                     end
                     client_state.client_io_watcher:callback(io_event)
-                    client_state.client_io_watcher:start(loop)
+                    state.clients[incoming_event.id] = client_state
                     local event = data_model.event_connection_request.encode{
                         id = client_state.id
                     }
@@ -169,6 +174,7 @@ local function on_event_idle_event(loop, idle, revents)
                         traffic_key = incoming_event.traffic_key
                     }
                     client_state.client:send(event)
+                    client_state.client_io_watcher:start(loop)                    
                     log:info("sent authentication token and traffic key to " .. incoming_event.id)
                 else
                     log:warn("no pending verification for " .. incoming_event.id)
