@@ -4,8 +4,12 @@ local signal = require "signal"
 local command = require "eiko.command"
 command.start(ev.Loop.default)
 
+local event = require "eiko.event"
+event.start(ev.Loop.default)
+
 local function on_sigint_event(loop, sig, revents)
     command.stop()
+    event.stop()
     ev.Loop.default:unloop()
 end
 local signal_watcher = ev.Signal.new(on_sigint_event, signal.SIGINT)

@@ -15,7 +15,7 @@ end
 
 local function verify(host, port, data)
     for _, pending in pairs(state.pending) do
-        local incoming_event, _, _ = encdec.decode(pending.traffic_key, data)
+        local incoming_event, _, _ = encdec.decode(data, pending.traffic_key)
         local incoming_event, err = data_model.event_authentication_response.decode(incoming_event)
         if err then
             log:debug("unable to authenticate data as " .. pending.id .. " at unverified " .. to_peername(host, port))
@@ -39,7 +39,7 @@ local function verify(host, port, data)
 end
 
 local function decode(verified, data)
-    local incoming_event, counter, epoch = encdec.decode(verified.traffic_key, data)
+    local incoming_event, counter, epoch = encdec.decode(data, verified.traffic_key)
     if counter <= verified.counter then
         log:debug("discarding out of order event with counter " .. counter .. " <= " .. verified.counter .. " from " .. verified.id)
     elseif epoch < verified.ack then
@@ -129,6 +129,22 @@ local function on_client_io_event(loop, io, revents)
     consume(host, port, data)
 end
 
+local function connect(incoming_event)
+    local pending = {}
+    pending.authentication_token = encdec.authentication_token()
+    pending.traffic_key = encdec.traffic_key()
+    pending.now = os.clock()
+    pending.id = incoming_event.id
+    state.pending[pending.id] = pending
+    local event = data_model.event_connection_response.encode{
+        id = pending.id,
+        authentication_token = pending.authentication_token,
+        traffic_key = pending.traffic_key
+    }
+    state.command:send(event)
+    log:info("authentication token and traffic key generated for " .. pending.id)
+end
+
 local function on_command_io_event(loop, io, revents)
     state.command_idle_watcher:start(loop)
     state.command_io_watcher:stop(loop)
@@ -152,22 +168,6 @@ local function on_command_idle_event(loop, idle, revents)
         state.command_idle_watcher:stop(loop)
         state.command_io_watcher:start(loop)
     end
-end
-
-local function connect(incoming_event)
-    local pending = {}
-    pending.authentication_token = encdec.authentication_token()
-    pending.traffic_key = sodium.crypto_secretbox_keygen()
-    pending.now = os.clock()
-    pending.id = incoming_event.id
-    state.pending[pending.id] = pending
-    local event = data_model.event_connection_response.encode{
-        id = pending.id,
-        authentication_token = pending.authentication_token,
-        traffic_key = pending.traffic_key
-    }
-    state.command:send(event)
-    log:info("authentication token and traffic key generated for " .. pending.id)
 end
 
 local function on_game_io_event(loop, io, revents)
