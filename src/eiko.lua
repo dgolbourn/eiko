@@ -7,11 +7,8 @@ command.start(ev.Loop.default)
 local event = require "eiko.event"
 event.start(ev.Loop.default)
 
-local authenticator = require "eiko.authenticator"
-authenticator.start(ev.Loop.default)
 
 local function on_sigint_event(loop, sig, revents)
-    authenticator.stop()
     event.stop()
     command.stop()
     ev.Loop.default:unloop()
