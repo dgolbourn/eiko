@@ -1,18 +1,18 @@
 {
-    "$id": "#user_action",
+    "$id": "#server_status",
     "$schema": "http://json-schema.org/schema#",
     "$comment": "string",
     "type": "object",
     "properties": {
         "_kind": {
-            "const": "user_action"
+            "const": "server_status"
         },
-        "action": {
+        "status": {
             "type": "object"
         }
     },
     "required": [
         "_kind",
-        "action"
+        "status"
     ]
 }

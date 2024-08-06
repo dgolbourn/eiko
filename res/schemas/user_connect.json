@@ -1,0 +1,26 @@
+{
+    "$id": "#user_connect",
+    "$schema": "http://json-schema.org/schema#",
+    "$comment": "string",
+    "type": "object",
+    "properties": {
+        "_kind": {
+            "const": "user_connect"
+        },
+        "authentication_token": {
+            "type": "string"
+        },
+        "host" : {
+            "type": "string"
+        },
+        "port" : {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "_kind",
+        "authentication_token",
+        "host",
+        "port"
+    ]
+}

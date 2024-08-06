@@ -1,4 +1,4 @@
-local encdec = require "eiko.encdec"
+local codec = require "eiko.codec"
 local data_model = require "eiko.data_model"
 local log = require "eiko.logs".defaultLogger()
 local socket = require "socket"
@@ -15,7 +15,7 @@ end
 
 local function verify(host, port, data)
     for _, pending in pairs(state.pending) do
-        local incoming_event, _, _ = encdec.decode(data, pending.traffic_key)
+        local incoming_event, _, _ = codec.decode(data, pending.traffic_key)
         local incoming_event, err = data_model.event_authentication_response.decode(incoming_event)
         if err then
             log:debug("unable to authenticate data as " .. pending.id .. " at unverified " .. to_peername(host, port))
@@ -39,7 +39,7 @@ local function verify(host, port, data)
 end
 
 local function decode(verified, data)
-    local incoming_event, counter, epoch = encdec.decode(data, verified.traffic_key)
+    local incoming_event, counter, epoch = codec.decode(data, verified.traffic_key)
     if counter <= verified.counter then
         log:debug("discarding out of order event with counter " .. counter .. " <= " .. verified.counter .. " from " .. verified.id)
     elseif epoch < verified.ack then
@@ -102,7 +102,7 @@ local function produce(id, message)
             verified.history[past_epoch] = nil
         end
     end
-    local encoded_message = encdec.delta_compress_encode(new, verified.epoch, previous, previous_epoch, verified.traffic_key)
+    local encoded_message = codec.delta_compress_encode(new, verified.epoch, previous, previous_epoch, verified.traffic_key)
     log:debug("delta (" .. verified.epoch .. " <- " .. previous_epoch .. ") encoded message produced for " .. id .. " at " .. to_peername(verified.host, verified.port))
     return encoded_message, verified.host, verified.port
 end
@@ -131,8 +131,8 @@ end
 
 local function connect(incoming_event)
     local pending = {}
-    pending.authentication_token = encdec.authentication_token()
-    pending.traffic_key = encdec.traffic_key()
+    pending.authentication_token = codec.authentication_token()
+    pending.traffic_key = codec.traffic_key()
     pending.now = os.clock()
     pending.id = incoming_event.id
     state.pending[pending.id] = pending
@@ -208,8 +208,8 @@ end
 
 local function start(loop)
     log:info("starting event")
+    loop = loop or ev.Loop.default
     state = {}
-    state.loop = loop or ev.Loop.default
     state.verified = {}
     state.pending = {}
     state.timer_watcher = ev.Timer.new(on_timer_event, config.event.key_expiry_check_period, config.event.key_expiry_check_period)
@@ -234,10 +234,9 @@ local function start(loop)
     state.command_io_watcher:start(loop)
 end
 
-local function stop()
+local function stop(loop)
     log:info("stopping event")
-    local loop = state.loop
-    state.loop = nil
+    loop = loop or ev.Loop.default
     if state.timer_watcher then
         state.timer_watcher:stop(loop)
     end

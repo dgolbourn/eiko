@@ -5,13 +5,13 @@ local config = require "config"
 local log = require "eiko.logs".defaultLogger()
 local event = require "eiko.event"
 local data_model = require "eiko.data_model"
-local encdec = require "eiko.encdec"
+local codec = require "eiko.codec"
 local zmq = require "lzmq"
 
 
 local state = nil
 
-local function client_state_close(client_state)
+local function client_state_close(client_state, loop)
     if client_state.client then
         client_state.client:close()
     end
@@ -40,7 +40,7 @@ local function on_verify_io_event(peername, loop, io, revents)
         if err == "timeout" then
         elseif err then
             log:warn("\"" .. err .. "\" when expecting verification of " .. peername)
-            client_state_close(client_state)
+            client_state_close(client_state, loop)
         else
             local incoming_event, err = data_model.authenticator_verify_response.decode(data)
             if incoming_event then
@@ -50,17 +50,18 @@ local function on_verify_io_event(peername, loop, io, revents)
                 client_state.authenticator_io_watcher:stop(loop)
                 client_state.timer_watcher:stop(loop)
                 client_state.id = incoming_event.id
+                state.clients[client_state.id] = client_state
                 local event = data_model.event_connection_request.encode{
                     id = client_state.id
                 }
                 local _, err = state.event:send(event)
                 if err then
                     log:warn("\"" .. err:msg() .. "\" while attempting authentication of " .. peername)
-                    client_state_close(client_state)
+                    client_state_close(client_state, loop)
                 end
             else
                 log:warn("\"" .. err .. "\" when expecting verification of " .. peername)
-                client_state_close(client_state)
+                client_state_close(client_state, loop)
             end
         end
     else
@@ -86,14 +87,14 @@ local function on_authenticator_handshake_io_event(peername, loop, io, revents)
             local _, err = client_state.authenticator:send(event)
             if err then
                 log:warn("\"" .. err .. "\" while attempting authentication of " .. peername)
-                client_state_close(client_state)
+                client_state_close(client_state, loop)
             else
                 log:info("sent verification request to " .. authenticator_peername .. " for " .. peername)
             end
         elseif err == "timeout" or err == "wantread" or err == "wantwrite" then
         else
             log:warn("\"" .. err .. "\" while attempting tls handshake with " .. authenticator_peername)
-            client_state_close(client_state)
+            client_state_close(client_state, loop)
         end
     else
         log:warn("no pending authentication for " .. peername)
@@ -108,7 +109,7 @@ local function on_authentication_io_event(peername, loop, io, revents)
         if err == "timeout" then
         else if err then
             log:warn("\"" .. err .. "\" when expecting authentication of " .. peername)
-            client_state_close(client_state)
+            client_state_close(client_state, loop)
         else
             client_state.client_io_watcher:stop(loop)
             local incoming_event, err = data_model.client_authentication_response.decode(data)
@@ -120,7 +121,7 @@ local function on_authentication_io_event(peername, loop, io, revents)
                 if err then
                     local authenticator_peername = config.authenticator.host .. ":" .. config.authenticator.port
                     log:warn("\"" .. err .. "\" while attempting tls handshake with " .. authenticator_peername)
-                    client_state_close(client_state)
+                    client_state_close(client_state, loop)
                 else
                     authenticator:settimeout(0)
                     local io_event = function(loop, io, revents)
@@ -129,10 +130,11 @@ local function on_authentication_io_event(peername, loop, io, revents)
                     client_state.authenticator = authenticator
                     client_state.authenticator_io_watcher = ev.IO.new(io_event, authenticator:getfd(), ev.READ)
                     client_state.authenticator_io_watcher:start(loop)
+                    io_event(loop, io, revents)
                 end
             else
                 log:warn("\"" .. err .. "\" when expecting authentication of " .. peername)
-                client_state_close(client_state)
+                client_state_close(client_state, loop)
             end
         end
     else
@@ -163,7 +165,7 @@ local function on_client_command_io_event(peername, loop, io, revents)
         elseif err == "timeout" then
         else
             log:warn("\"" .. err .. "\" while receiving from " .. client_state.id)
-            client_state_close(client_state)
+            client_state_close(client_state, loop)
         end
     else
         log:warn("no verified client at " .. peername)
@@ -174,7 +176,7 @@ local function on_authentication_timeout_event(peername, loop, io, revents)
     local client_state = state.clients[peername]
     if client_state
         log:warn("authentication period has elapsed for " .. peername)
-        client_state_close(client_state)
+        client_state_close(client_state, loop)
     else
         log:warn("no pending authentication for " .. peername)
     end
@@ -199,21 +201,21 @@ local function on_handshake_io_event(peername, loop, io, revents)
             end
             client_state.timer_watcher = timer_watcher
             timer_watcher:start(loop)
-            client_state.authentication_token = encdec.authentication_token()
+            client_state.authentication_token = codec.authentication_token()
             local event = data_model.client_authentication_request.encode{
                 authentication_token = client_state.authentication_token
             }
             local _, err = client_state.client:send(event)
             if err then
                 log:warn("\"" .. err .. "\" while attempting authentication of " .. peername)
-                client_state_close(client_state)
+                client_state_close(client_state, loop)
             else
                 log:info("sent authentication token to " .. peername)
             end
         elseif err == "timeout" or err == "wantread" or err == "wantwrite" then
         else
             log:warn("\"" .. err .. "\" while attempting tls handshake with " .. peername)
-            client_state_close(client_state)
+            client_state_close(client_state, loop)
         end
     else
         log:warn("no pending authentication for " .. peername)
@@ -242,7 +244,7 @@ local function on_event_idle_event(loop, idle, revents)
                     local _, err = client_state.client:send(event)
                     if err then
                         log:warn("\"" .. err .. "\" while attempting authentication of " .. peername)
-                        client_state_close(client_state)
+                        client_state_close(client_state, loop)
                     else
                         local peername = client_state.peername
                         local io_event = function(loop, io, revents)
@@ -287,7 +289,7 @@ local function on_game_idle_event(loop, idle, revents)
                     local _, err = client_state.client:send(event)
                     if err then
                         log:warn("\"" .. err .. "\" while attempting to send to " .. client_state.id)
-                        client_state_close(client_state)
+                        client_state_close(client_state, loop)
                     end
                 else
                     log:debug("no verified client for " .. incoming_event.id)
@@ -325,8 +327,8 @@ end
 
 local function start(loop)
     log:info("starting command")
+    loop = loop or ev.Loop.default
     state = {}
-    state.loop = loop or ev.Loop.default
     state.tcp = socket.tcp()
     state.tcp:bind(config.command.host, config.command.port)
     state.tcp:listen(config.command.max_clients)
@@ -349,12 +351,11 @@ local function start(loop)
     state.clients = {}
 end
 
-local function stop()
+local function stop(loop)
     log:info("stopping command")
-    local loop = state.loop
-    state.loop = nil
+    loop = loop or ev.Loop.default
     for _, client_state in pairs(state.clients) do
-        client_state_close(client_state)
+        client_state_close(client_state, loop)
     end
     if state.new_client_io_watcher then
         state.new_client_io_watcher:stop(loop)

@@ -1,6 +1,6 @@
 local socket = require("socket")
 local ssl = require("ssl")
-local encdec = require("eiko.encdec")
+local codec = require("eiko.codec")
 local data_model = require("eiko.data_model")
 
 
@@ -41,7 +41,7 @@ event_authentication_response = data_model.event_authentication_response.encode{
     authentication_token = event_authentication_request.authentication_token
 }
 
-event_authentication_response = encdec.encode(event_authentication_response, 0, 0, event_authentication_request.traffic_key)
+event_authentication_response = codec.encode(event_authentication_response, 0, 0, event_authentication_request.traffic_key)
 
 print(event_authentication_response)
 
