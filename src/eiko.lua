@@ -7,14 +7,11 @@ command.start(ev.Loop.default)
 local event = require "eiko.event"
 event.start(ev.Loop.default)
 
-local authenticator = require "eiko.authenticator"
-authenticator.start(ev.Loop.default)
 
 local function on_sigint_event(loop, sig, revents)
-    authenticator.stop()
-    event.stop()
-    command.stop()
-    ev.Loop.default:unloop()
+    event.stop(loop)
+    command.stop(loop)
+    loop:unloop()
 end
 local signal_watcher = ev.Signal.new(on_sigint_event, signal.SIGINT)
 signal_watcher:start(ev.Loop.default)

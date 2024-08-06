@@ -19,25 +19,20 @@ dependencies = {
    "ansicolors",
    "lyaml",
    "lua_signal",
-   "lanes",
    "luafilesystem",
    "lzmq"
 }
 description = {}
 build = {
    type = "builtin",
-   install = {
-      lua = {
-         eiko = "src/eiko.lua",
-         ["eiko.encdec"] = "src/encdec.lua",
-         ["eiko.command"] = "src/command.lua",
-         ["eiko.event"] = "src/event.lua",
-         ["eiko.data_model"] = "src/data_model.lua",
-         ["eiko.logs"] = "src/logs.lua",
-         ["eiko.signals"] = "src/signals.lua",
-         ["eiko.config"] = "src/config.lua",
-         ["eiko.authenticator"] = "src/authenticator.lua"
-      }
+   modules = {
+      eiko = "src/eiko.lua",
+      ["eiko.codec"] = "src/codec.lua",
+      ["eiko.command"] = "src/command.lua",
+      ["eiko.event"] = "src/event.lua",
+      ["eiko.data_model"] = "src/data_model.lua",
+      ["eiko.logs"] = "src/logs.lua",
+      ["eiko.config"] = "src/config.lua"
    },
    copy_directories = {"res"}
 }

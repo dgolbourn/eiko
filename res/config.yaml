@@ -1,35 +1,48 @@
 ---
 event:
-  key_expiry_check_period : 1
-  message_history_depth : 20
-  authentication_period : 30
-  traffic_key_period : 86400
+  key_expiry_check_period: 1
+  message_history_depth: 20
+  authentication_period: 30
+  traffic_key_period: 86400
   host: localhost
   port: 21098
   pair:
     command: ipc://@event/pair/command
 
 command:
-  ssl_params :
-      mode : server
-      protocol : tlsv1_2
-      key : test/ca-key.pem
-      certificate : test/ca-cert.pem
-      verify : none
-      options : [all]
-  max_clients : 16
+  ssl_params:
+      mode: server
+      protocol: tlsv1_2
+      key: test/ca-key.pem
+      certificate: test/ca-cert.pem
+      verify: none
+      options: [all]
+  max_clients: 16
   host: localhost
   port: 21098
-  authentication_period : 30
-  pair:
-    authenticator: ipc://@command/pair/authenticator
+  authentication_period: 30
 
 authenticator:
-  authentication_period : 30
-  verify_url: https://localhost/server/verify
-  realtime_signal: 1
+  host: localhost
+  port: 21099
+  ssl_params:
+    mode: client
+    protocol: any
+    verify: none
+    options: [all]
 
 game:
   pair:
     event: ipc://@game/pair/event
     command: ipc://@game/pair/command
+
+user:
+  pair:
+    client: ipc://@user/pair/client
+
+client:
+  ssl_params:
+    mode: client
+    protocol: any
+    verify: none
+    options: [all]

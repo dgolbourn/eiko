@@ -1,18 +1,18 @@
 {
-    "$id": "#authenticator_verify_response",
+    "$id": "#user_example_action",
     "$schema": "http://json-schema.org/schema#",
     "$comment": "string",
     "type": "object",
     "properties": {
         "_kind": {
-            "const": "authenticator_verify_response"
+            "const": "user_example_action"
         },
-        "id": {
-            "type": "string"
+        "action": {
+            "type": "object"
         }
     },
     "required": [
         "_kind",
-        "id"
+        "action"
     ]
 }
