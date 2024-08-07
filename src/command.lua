@@ -306,10 +306,10 @@ local function on_game_idle_event(loop, idle, revents)
 end
 
 local function on_new_client_io_event(loop, io, revents)
-    log:info("connection from unverified " .. peername)
     local client_state = {}
     local client = state.tcp:accept()
     local peername = client:getpeername()
+    log:info("connection from unverified " .. peername)
     local client, err = ssl.wrap(client, config.command.ssl_params)
     if err then
         log:warn("\"" .. err .. "\" while attempting tls handshake with " .. peername)
