@@ -22,6 +22,7 @@ dependencies = {
    "luafilesystem",
    "lzmq",
    "lua-mongo",
+   "lua_uuid"
 }
 description = {}
 build = {
