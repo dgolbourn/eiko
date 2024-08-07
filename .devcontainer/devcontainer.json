@@ -1,9 +1,11 @@
 {
-    "build": { 
-        "dockerfile": "Dockerfile", 
-        "context": "."
-    },
-    "postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}",
+	"dockerComposeFile": [
+		"docker-compose.yml"
+	],
+    "forwardPorts": [8081],
+	"service": "development",
+    "workspaceFolder": "/workspace/",
+    "postCreateCommand": "git config --global --add safe.directory /workspace",
     "postStartCommand": ".devcontainer/scripts/postStartCommand.sh",
     "customizations": {
         "vscode": {

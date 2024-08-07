@@ -1,5 +1,6 @@
 #!/bin/bash
 sudo apt update -y
+sudo apt upgrade -y
 sudo apt install -y build-essential libreadline-dev unzip rlwrap
 
 git clone https://luajit.org/git/luajit.git
