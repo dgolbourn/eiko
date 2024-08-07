@@ -21,8 +21,9 @@ dependencies = {
    "lua_signal",
    "luafilesystem",
    "lzmq",
-   "lua-mongo",
-   "lua_uuid"
+   "lua-mongo-pool",
+   "lua_uuid",
+   "lanes"
 }
 description = {}
 build = {
@@ -34,7 +35,7 @@ build = {
       ["eiko.event"] = "src/event.lua",
       ["eiko.data_model"] = "src/data_model.lua",
       ["eiko.logs"] = "src/logs.lua",
-      ["eiko.config"] = "src/config.lua"
+      ["eiko.config"] = "src/config.lua",
    },
    copy_directories = {"res"}
 }
