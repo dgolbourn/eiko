@@ -21,7 +21,7 @@ dependencies = {
    "lua_signal",
    "luafilesystem",
    "lzmq",
-   "mongo",
+   "lua-mongo",
    "lua_uuid"
 }
 description = {}

@@ -36,7 +36,7 @@ authenticator:
   timeout_period: 10
   user_authentication_period: 86400
   client_authentication_period: 300
-  db: mongodb://root:example@mongo?socketTimeoutMS=10000
+  db: mongodb://root:example@mongo/?socketTimeoutMS=10000
 
 game:
   pair:
