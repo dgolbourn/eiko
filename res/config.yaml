@@ -30,9 +30,12 @@ authenticator:
     certificate: test/ca-cert.pem
     verify: none
     options: [all]
+  max_clients: 16
   host: localhost
   port: 21099
-  socket_period: 10
+  timeout_period: 10
+  user_authentication_period: 86400
+  client_authentication_period: 300
   db: mongodb://root:example@mongo?socketTimeoutMS=10000
 
 game:

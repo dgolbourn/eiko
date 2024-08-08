@@ -142,8 +142,8 @@ local function on_authentication_io_event(peername, loop, io, revents)
     end
 end
 
-local function on_client_command_io_event(peername, loop, io, revents)
-    local client_state = state.clients[peername]
+local function on_client_command_io_event(id, loop, io, revents)
+    local client_state = state.clients[id]
     if client_state then
         local data, err, partial = client_state.client:receive('*l', client_state.buffer)
         client_state.buffer = partial
@@ -152,23 +152,23 @@ local function on_client_command_io_event(peername, loop, io, revents)
             if incoming_event then
                 if data_model.client_example_command.kindof(incoming_event) then
                     local event = data_model.game_command.encode{
-                        id = verified.id,
+                        id = id,
                         command = incoming_event.command
                     }
                     state.event:send(event)
                 else
-                    log:error("unimplemented command kind " .. incoming_event._kind .. " received from " .. client_state.id)
+                    log:error("unimplemented command kind " .. incoming_event._kind .. " received from " .. id)
                 end
             else
-                log:error("\"" .. err .. "\" when decoding data from " .. client_state.id)
+                log:error("\"" .. err .. "\" when decoding data from " .. id)
             end
         elseif err == "timeout" then
         else
-            log:warn("\"" .. err .. "\" while receiving from " .. client_state.id)
+            log:warn("\"" .. err .. "\" while receiving from " .. id)
             client_state_close(client_state, loop)
         end
     else
-        log:warn("no verified client at " .. peername)
+        log:warn("no verified client " .. id)
     end
 end
 
@@ -192,15 +192,6 @@ local function on_handshake_io_event(peername, loop, io, revents)
                 on_authentication_io_event(peername, loop, io, revents)
             end
             client_state.client_io_watcher:callback(io_event)
-            local timer_event = function(loop, io, revents)
-                on_authentication_timeout_event(peername, loop, io, revents)
-            end
-            local timer_watcher = ev.Timer.new(timer_event, config.command.authentication_period, 0)
-            if client_state.timer_watcher then
-                client_state.timer_watcher:stop(loop)
-            end
-            client_state.timer_watcher = timer_watcher
-            timer_watcher:start(loop)
             client_state.authentication_token = codec.authentication_token()
             local event = data_model.client_authentication_request.encode{
                 authentication_token = client_state.authentication_token
@@ -246,9 +237,9 @@ local function on_event_idle_event(loop, idle, revents)
                         log:warn("\"" .. err .. "\" while attempting authentication of " .. peername)
                         client_state_close(client_state, loop)
                     else
-                        local peername = client_state.peername
+                        local id = incoming_event.id
                         local io_event = function(loop, io, revents)
-                            on_client_command_io_event(peername, loop, io, revents)
+                            on_client_command_io_event(id, loop, io, revents)
                         end
                         client_state.client_io_watcher:callback(io_event)
                         client_state.client_io_watcher:start(loop)
@@ -319,8 +310,14 @@ local function on_new_client_io_event(loop, io, revents)
             on_handshake_io_event(peername, loop, io, revents)
         end
         client_state.client = client
+        client_state.peername = peername
         client_state.client_io_watcher = ev.IO.new(io_event, client:getfd(), ev.READ)
         client_state.client_io_watcher:start(loop)
+        local timer_event = function(loop, io, revents)
+            on_authentication_timeout_event(peername, loop, io, revents)
+        end        
+        client_state.timer_watcher = ev.Timer.new(timer_event, config.command.authentication_period, 0)
+        client_state.timer_watcher:start(loop)        
         state.clients[peername] = client_state
     end
 end
