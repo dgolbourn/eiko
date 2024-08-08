@@ -32,7 +32,8 @@ authenticator:
     options: [all]
   host: localhost
   port: 21099
-  db: mongodb://root:example@mongo
+  socket_period: 10
+  db: mongodb://root:example@mongo?socketTimeoutMS=10000
 
 game:
   pair:
