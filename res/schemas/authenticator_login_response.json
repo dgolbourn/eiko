@@ -10,13 +10,17 @@
         "authentication_token": {
             "type": "string"
         },
-        "id": {
+        "uuid": {
+            "type": "string"
+        },
+        "display_name": {
             "type": "string"
         }
     },
     "required": [
         "_kind",
         "authentication_token",
-        "id"
+        "uuid",
+        "display_name"
     ]
 }

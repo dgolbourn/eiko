@@ -6,6 +6,12 @@
     "properties": {
         "_kind": {
             "const": "authenticator_login_request"
+        },
+        "login" : {
+            "type": "string"
+        },
+        "password" : {
+            "type": "string"
         }
     },
     "required": [

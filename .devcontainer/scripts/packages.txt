@@ -5,3 +5,6 @@ libev-dev
 libpcre3-dev
 libyaml-dev
 libzmq3-dev
+libmongoc-dev
+libbson-dev
+uuid-dev

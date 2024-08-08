@@ -3,3 +3,4 @@
 
 luarocks make --local --server rocks
 
+.devcontainer/scripts/create_db.lua
