@@ -9,7 +9,7 @@ local sodium = require "sodium"
 local log = require "eiko.logs".defaultLogger()
 
 
-local state = {}
+local state = nil
 
 local function client_state_close(client_state, loop)
     log:debug("closing connection with " .. client_state.peername) 

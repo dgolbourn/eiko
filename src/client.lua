@@ -370,7 +370,7 @@ local function start(loop)
     state = {}
     state.ipc_context = zmq.context{io_threads = 1}
     state.user = state.ipc_context:socket{zmq.PAIR,
-        connect = config.user.pair.client
+        bind = config.client.ipc
     }
     state.user_io_watcher = ev.IO.new(on_user_io_event, state.user:get_fd(), ev.READ)
     state.user_idle_watcher = ev.Idle.new(on_user_idle_event)
