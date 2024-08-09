@@ -7,7 +7,7 @@ git clone https://luajit.org/git/luajit.git
 cd luajit
 make
 sudo make install
-cd ../luaroc
+cd ../
 
 git clone https://github.com/luarocks/luarocks.git
 cd luarocks
