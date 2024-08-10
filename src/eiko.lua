@@ -26,4 +26,18 @@ signal_watcher:start(ev.Loop.default)
 -- local idle_watcher = ev.Idle.new(on_idle_event)
 -- idle_watcher:start(ev.Loop.default)
 
+local zmq = require "lzmq"
+local data_model = require "eiko.data_model"
+local config = require "eiko.config"
+
+local context = zmq.context{io_threads = 1}
+local user = context:socket{zmq.PAIR, connect = config.client.ipc}
+
+local event = data_model.user_login_request.encode{
+    login="jane@bloggs.co.uk",
+    password="password"
+}
+
+user:send(event)
+
 ev.Loop.default:loop()

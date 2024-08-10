@@ -1,0 +1,8 @@
+{
+    "$id": "#client_response",
+    "$schema": "http://json-schema.org/schema#",
+    "anyOf": [
+        { "$ref": "client_stream_response" },
+        { "$ref": "client_state_response" }
+    ]
+}
