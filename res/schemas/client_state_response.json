@@ -1,18 +1,17 @@
 {
-    "$id": "#user_example_command",
+    "$id": "#client_state_response",
     "$schema": "http://json-schema.org/schema#",
-    "$comment": "string",
     "type": "object",
     "properties": {
         "_kind": {
-            "const": "user_example_command"
+            "const": "client_state_response"
         },
-        "command": {
+        "user" : {
             "type": "object"
         }
     },
     "required": [
         "_kind",
-        "command"
+        "user"
     ]
 }

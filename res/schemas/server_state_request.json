@@ -1,18 +1,21 @@
 {
-    "$id": "#server_status",
+    "$id": "#server_state_request",
     "$schema": "http://json-schema.org/schema#",
-    "$comment": "string",
     "type": "object",
     "properties": {
         "_kind": {
-            "const": "server_status"
+            "const": "server_state_request"
         },
-        "status": {
+        "global" : {
+            "type": "object"
+        },
+        "user" : {
             "type": "object"
         }
     },
     "required": [
         "_kind",
-        "status"
+        "global",
+        "user"
     ]
 }

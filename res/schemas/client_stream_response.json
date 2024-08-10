@@ -1,18 +1,17 @@
 {
-    "$id": "#server_event",
+    "$id": "#client_stream_response",
     "$schema": "http://json-schema.org/schema#",
-    "$comment": "string",
     "type": "object",
     "properties": {
         "_kind": {
-            "const": "server_event"
+            "const": "client_stream_response"
         },
-        "state": {
-            "type": "object"       
+        "user" : {
+            "type": "object"
         }
     },
     "required": [
         "_kind",
-        "state"
+        "user"
     ]
 }

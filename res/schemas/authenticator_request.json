@@ -1,7 +1,6 @@
 {
     "$id": "#authenticator_request",
     "$schema": "http://json-schema.org/schema#",
-    "$comment": "string",
     "anyOf": [
         { "$ref": "authenticator_authorise_request" },
         { "$ref": "authenticator_login_request" },

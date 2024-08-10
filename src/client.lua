@@ -3,28 +3,64 @@ local ssl = require "ssl"
 local codec = require "eiko.codec"
 local data_model = require "eiko.data_model"
 local config = require "eiko.config"
+local log = require "eiko.logs".defaultLogger()
+local zmq = require "lzmq"
+local ev = require "ev"
 
 
 local state = {}
 
-local function on_command_io_event(loop, io, revents)
+
+local function connection_close(loop)
+    log:info("closing connection")
+    local current_state = state.login_state or state.pending_state or state.active_state
+    state.login_state = nil
+    state.pending_state = nil
+    state.active_state = nil
+    if current_state then
+        if current_state.authenticator_io_watcher then
+            current_state.authenticator_io_watcher:stop(loop)
+        end
+        if current_state.authenticator then
+            current_state.authenticator:close()
+        end
+        if current_state.timer_watcher then
+            current_state.timer_watcher:close()
+        end
+        if current_state.stream_io_watcher then
+            current_state.stream_io_watcher:stop(loop)
+        end
+        if current_state.stream then
+            current_state.stream:close()
+        end
+        if current_state.server_io_watcher then
+            current_state.server_io_watcher:stop(loop)
+        end
+        if current_state.server then
+            current_state.server:close()
+        end
+    end
+end
+
+local function on_server_io_event(loop, io, revents)
     local active_state = state.active_state
     if active_state then
-        local data, err, partial = active_state.command:receive('*l', active_state.buffer)
+        local data, err, partial = active_state.server:receive('*l', active_state.buffer)
         active_state.buffer = partial
         if err == "timeout" then
         elseif err then
-            log:warn("\"" .. err .. "\" while receiving data from " .. active_state.command:getpeername())
+            log:warn("\"" .. err .. "\" while receiving data from " .. active_state.server:getpeername())
             connection_close(loop)
         else
-            local incoming_event, err = data_model.server_status.decode(data)
+            local incoming_event, err = data_model.server_state_request.decode(data)
             if incoming_event then
-                local event = data_model.user_status.encode{
-                    status = incoming_event.status,
+                local event = data_model.client_state_request.encode{
+                    global = incoming_event.global,
+                    user = incoming_event.user
                 }
                 active_state.client:send(event)
             else
-                log:warn("\"" .. err .. "\" while receiving data from " .. active_state.event:getpeername())
+                log:warn("\"" .. err .. "\" while receiving data from " .. active_state.stream:getpeername())
                 connection_close(loop)
             end
         end
@@ -33,18 +69,18 @@ local function on_command_io_event(loop, io, revents)
     end
 end
 
-local function on_event_io_event(loop, io, revents)
+local function on_stream_io_event(loop, io, revents)
     local active_state = state.active_state
     if active_state then
-        local data, err = active_state.event:receive()
+        local data, err = active_state.stream:receive()
         if err == "timeout" then
         elseif err then
-            log:warn("\"" .. err .. "\" while receiveing event from " .. active_state.event:getpeername())
+            log:warn("\"" .. err .. "\" while receiveing event from " .. active_state.stream:getpeername())
             connection_close(loop)
         else
             local incoming_event, epoch = codec.delta_compress_decode(data, active_state.previous, active_state.traffic_key)
             if epoch <= active_state.epoch then
-                log:debug("discarding out of date event referring to epoch " .. epoch .. " <= " .. active_state.epoch .. " from " .. active_state.event:getpeername())
+                log:debug("discarding out of date event referring to epoch " .. epoch .. " <= " .. active_state.epoch .. " from " .. active_state.stream:getpeername())
             else
                 active_state.epoch = epoch
                 active_state.previous[epoch] = incoming_event
@@ -54,20 +90,21 @@ local function on_event_io_event(loop, io, revents)
                     end
                 end
                 active_state.previous[0] = ""
-                local incoming_event, err = data_model.server_event.decode(incoming_event)
+                local incoming_event, err = data_model.server_stream_request.decode(incoming_event)
                 if err then
-                    log:warn("\"" .. err .. "\" when decoding data from " .. active_state.event:getpeername())
+                    log:warn("\"" .. err .. "\" when decoding data from " .. active_state.stream:getpeername())
                 else
-                    local event = data_model.user_event.encode{
-                        state = incoming_event.state,
+                    local event = data_model.client_stream_request.encode{
+                        global = incoming_event.global,
+                        user = incoming_event.user
                     }
                     active_state.client:send(event)
-                    local event = data_model.client_ack_action.encode{}
-                    event = codec.encode(event, active_state.counter, active_state.epoch, incoming_event.traffic_key)
+                    local event = data_model.server_stream_response.encode{}
+                    event = codec.encode(event, active_state.counter, active_state.epoch, active_state.traffic_key)
                     active_state.counter = active_state.counter + 1
-                    local _, err = active_state.event:send(event)
+                    local _, err = active_state.stream:send(event)
                     if err then
-                        log:warn("\"" .. err:msg() .. "\" while sending to " .. active_state.event:getpeername())
+                        log:warn("\"" .. err:msg() .. "\" while sending to " .. active_state.stream:getpeername())
                         connection_close(loop)
                     end
                 end
@@ -78,43 +115,43 @@ local function on_event_io_event(loop, io, revents)
     end
 end
 
-local function on_event_authentication_io_event(peername, loop, io, revents)
+local function on_stream_authentication_io_event(peername, loop, io, revents)
     local pending_state = state.pending_state
     if pending_state then
-        local data, err, partial = pending_state.command:receive('*l', pending_state.buffer)
+        local data, err, partial = pending_state.server:receive('*l', pending_state.buffer)
         pending_state.buffer = partial
         if err == "timeout" then
         elseif err then
-            log:warn("\"" .. err .. "\" while attempting authentication with " .. pending_state.event:getpeername())
+            log:warn("\"" .. err .. "\" while attempting authentication with " .. pending_state.stream:getpeername())
             connection_close(loop)
         else
-            local incoming_event, err = data_model.event_authentication_request.decode(data)
+            local incoming_event, err = data_model.server_stream_authentication_request.decode(data)
             if incoming_event then
-                log:info("Authenticating with " .. pending_state.event:getpeername())
+                log:info("Authenticating with " .. pending_state.stream:getpeername())
                 pending_state.traffic_key = incoming_event.traffic_key
                 pending_state.epoch = 0
                 pending_state.counter = 0
-                event = data_model.event_authentication_response.encode{
+                local event = data_model.server_stream_authentication_response.encode{
                     authentication_token = incoming_event.authentication_token
                 }
-                event = codec.encode(event, pending_state.counter, pending_state.epoch, incoming_event.traffic_key)
+                event = codec.encode(event, pending_state.counter, pending_state.epoch, pending_state.traffic_key)
                 pending_state.counter = pending_state.counter + 1
-                local _, err = pending_state.event:send(event)
+                local _, err = pending_state.stream:send(event)
                 if err then
-                    log:warn("\"" .. err:msg() .. "\" while attempting authentication with " .. pending_state.event:getpeername())
+                    log:warn("\"" .. err:msg() .. "\" while attempting authentication with " .. pending_state.stream:getpeername())
                     connection_close(loop)
                 end
-                pending_state.command_io_watcher:callback(on_command_io_event)
-                pending_state.command_io_watcher:start(loop)
-                pending_state.event_io_watcher = ev.IO.new(on_event_io_event, event:getfd(), ev.READ)
+                pending_state.timer_watcher:stop(loop)
+                pending_state.server_io_watcher:callback(on_server_io_event)
+                pending_state.server_io_watcher:start(loop)
+                pending_state.stream_io_watcher = ev.IO.new(on_stream_io_event, pending_state.stream:getfd(), ev.READ)
+                pending_state.stream_io_watcher:start(loop)
                 pending_state.previous = {}
                 pending_state.previous[0] = ""
-                pending_state.event_io_watcher:start(loop)
-                pending_state.timer_watcher:stop(loop)
                 state.pending_state = nil
                 state.active_state = pending_state
             else
-                log:warn("\"" .. err .. "\" while attempting authentication with " .. pending_state.event:getpeername())
+                log:warn("\"" .. err .. "\" while attempting authentication with " .. pending_state.stream:getpeername())
                 connection_close(loop)
             end
         end
@@ -130,26 +167,26 @@ local function on_server_authorisation_io_event(loop, io, revents)
         pending_state.buffer = partial
         if err == "timeout" then
         elseif err then
-            log:warn("\"" .. err .. "\" when expecting authorisation of " .. pending_state.command:getpeername() .. " with " .. pending_state.authenticator:getpeername())
+            log:warn("\"" .. err .. "\" when expecting authorisation of " .. pending_state.server:getpeername() .. " with " .. pending_state.authenticator:getpeername())
             connection_close(loop)
         else
             local incoming_event, err = data_model.authenticator_authorisation_response.decode(data)
             if incoming_event then
-                log:info("Received authorisation of " .. pending_state.command:getpeername() .. " from " .. pending_state.authenticator:getpeername())
+                log:info("Received authorisation of " .. pending_state.server:getpeername() .. " from " .. pending_state.authenticator:getpeername())
                 pending_state.authenticator:close()
                 pending_state.authenticator_io_watcher:stop(loop)
                 local event = data_model.client_authentication_reponse.encode{
                     authentication_token = incoming_event.authentication_token
                 }
-                local _, err = pending_state.command:send(event)
+                local _, err = pending_state.server:send(event)
                 if err then
-                    log:warn("\"" .. err:msg() .. "\" when confirming authorisation of " .. pending_state.command:getpeername() .. " from " .. pending_state.authenticator:getpeername())
+                    log:warn("\"" .. err:msg() .. "\" when confirming authorisation of " .. pending_state.server:getpeername() .. " from " .. pending_state.authenticator:getpeername())
                     connection_close(loop)
                 end
-                pending_state.command_io_watcher:callback(on_event_authentication_io_event)
-                pending_state.command_io_watcher:start(loop)
+                pending_state.server_io_watcher:callback(on_stream_authentication_io_event)
+                pending_state.server_io_watcher:start(loop)
             else
-                log:warn("\"" .. err .. "\" when expecting authorisation of " .. pending_state.command:getpeername() .. " from " .. pending_state.authenticator:getpeername())
+                log:warn("\"" .. err .. "\" when expecting authorisation of " .. pending_state.server:getpeername() .. " from " .. pending_state.authenticator:getpeername())
                 connection_close(loop)
             end
         end
@@ -166,15 +203,15 @@ local function on_authenticator_handshake_io_event(loop, io, revents)
             log:info("successful tls handshake with " .. pending_state.authenticator:getpeername())
             pending_state.authenticator_io_watcher:callback(on_server_authorisation_io_event)
             local event = data_model.authenticator_authorise_request.encode{
-                server_authentication_token = incoming_event.authentication_token,
-                client_authentication_token = pending_state.authentication_token
+                server_authentication_token = pending_state.authentication_token,
+                client_authentication_token = state.authentication_token
             }
             local _, err = pending_state.authenticator:send(event)
             if err then
-                log:warn("\"" .. err .. "\" while attempting authorisation of " .. pending_state.command:getpeername() .. " with " .. pending_state.authenticator:getpeername())
+                log:warn("\"" .. err .. "\" while attempting authorisation of " .. pending_state.server:getpeername() .. " with " .. pending_state.authenticator:getpeername())
                 connection_close(loop)
             else
-                log:info("sent authorisation request for " .. pending_state.command:getpeername() .. " to " .. pending_state.authenticator:getpeername())
+                log:info("sent authorisation request for " .. pending_state.server:getpeername() .. " to " .. pending_state.authenticator:getpeername())
             end
         elseif err == "timeout" or err == "wantread" or err == "wantwrite" then
         else
@@ -186,20 +223,20 @@ local function on_authenticator_handshake_io_event(loop, io, revents)
     end
 end
 
-local function on_command_verify_io_event(loop, io, revents)
+local function on_server_verify_io_event(loop, io, revents)
     local pending_state = state.pending_state
     if pending_state then
-        local data, err, partial = pending_state.command:receive('*l', pending_state.buffer)
+        local data, err, partial = pending_state.server:receive('*l', pending_state.buffer)
         pending_state.buffer = partial
         if err == "timeout" then
         elseif err then
-            log:warn("\"" .. err .. "\" when authenticating with " .. pending_state.command:getpeername())
+            log:warn("\"" .. err .. "\" when authenticating with " .. pending_state.server:getpeername())
             connection_close(loop)
         else
-            local incoming_event, err = data_model.client_authentication_request.decode(data)
+            local incoming_event, err = data_model.server_authentication_request.decode(data)
             if incoming_event then
-                log:info("authenticating with " .. pending_state.command:getpeername())
-                pending_state.command_io_watcher:stop(loop)
+                log:info("authenticating with " .. pending_state.server:getpeername())
+                pending_state.server_io_watcher:stop(loop)
                 local authenticator = socket.tcp()
                 authenticator:connect(config.authenticator.host, config.authenticator.port)
                 local authenticator, err = ssl.wrap(authenticator, config.authenticator.ssl_params)
@@ -208,13 +245,14 @@ local function on_command_verify_io_event(loop, io, revents)
                     connection_close(loop)
                 else
                     authenticator:settimeout(0)
+                    pending_state.authentication_token = incoming_event.authentication_token
                     pending_state.authenticator = authenticator
                     pending_state.authenticator_io_watcher = ev.IO.new(on_authenticator_handshake_io_event, authenticator:getfd(), ev.READ)
                     pending_state.authenticator_io_watcher:start(loop)
                     on_authenticator_handshake_io_event(loop, io, revents)
                 end
             else
-                log:warn("\"" .. err .. "\" when authenticating with " .. pending_state.command:getpeername())
+                log:warn("\"" .. err .. "\" when authenticating with " .. pending_state.server:getpeername())
                 connection_close(loop)
             end
         end
@@ -223,16 +261,16 @@ local function on_command_verify_io_event(loop, io, revents)
     end
 end
 
-local function on_command_handshake_io_event(loop, io, revents)
+local function on_server_handshake_io_event(loop, io, revents)
     local pending_state = state.pending_state
     if pending_state then
-        local success, err = pending_state.command:dohandshake()
+        local success, err = pending_state.server:dohandshake()
         if success then
-            log:info("successful tls handshake with " .. pending_state.command:getpeername())
-            command:callback(on_command_verify_io_event)
+            log:info("successful tls handshake with " .. pending_state.server:getpeername())
+            pending_state.server:callback(on_server_verify_io_event)
         elseif err == "timeout" or err == "wantread" or err == "wantwrite" then
         else
-            log:warn("\"" .. err .. "\" while attempting tls handshake with " .. pending_state.command:getpeername())
+            log:warn("\"" .. err .. "\" while attempting tls handshake with " .. pending_state.server:getpeername())
             connection_close(loop)
         end
     else
@@ -243,10 +281,76 @@ end
 local function on_authentication_timeout_event(loop, io, revents)
     local pending_state = state.pending_state
     if pending_state then
-        log:warn("authentication period has elapsed for " .. pending_state.command:getpeername())
+        log:warn("authentication period has elapsed for " .. pending_state.server:getpeername())
         connection_close(loop)
     else
         log:error("no pending connection")
+    end
+end
+
+local function on_login_io_event(loop, io, revents)
+    local login_state = state.login_state
+    if login_state then
+        local data, err, partial = login_state.server:receive('*l', login_state.buffer)
+        login_state.buffer = partial
+        if err == "timeout" then
+        elseif err then
+            log:warn("\"" .. err .. "\" when attempting login with " .. login_state.server:getpeername())
+            connection_close(loop)
+        else
+            local incoming_event, err = data_model.authenticator_login_response.decode(data)
+            if incoming_event then
+                log:info("logged in as " .. login_state.login)
+                login_state.server_io_watcher:stop(loop)
+                login_state.server_timer_watcher:stop(loop)
+                login_state.server:close()
+                state.login_state = nil
+                state.authentication_token = incoming_event.authentication_token
+                local event = data_model.user_login_response{}
+                state.user:send(event)
+            else
+                log:warn("\"" .. err .. "\" when attempting login with " .. login_state.server:getpeername())
+                connection_close(loop)
+            end
+        end
+    else
+        log:error("no pending login")
+    end
+end
+
+local function on_login_handshake_io_event(loop, io, revents)
+    local login_state = state.login_state
+    if login_state then
+        local success, err = login_state.server:dohandshake()
+        if success then
+            log:info("successful tls handshake with " .. login_state.server:getpeername())
+            login_state.server:callback(on_login_io_event)
+            local event = data_model.authenticator_login_request.encode{
+                login = login_state.login,
+                password = login_state.password
+            }
+            local _, err = login_state.server:send(event)
+            if err then
+                log:warn("\"" .. err:msg() .. "\" while sending to " .. login_state.server:getpeername())
+                connection_close(loop)
+            end
+        elseif err == "timeout" or err == "wantread" or err == "wantwrite" then
+        else
+            log:warn("\"" .. err .. "\" while attempting tls handshake with " .. login_state.server:getpeername())
+            connection_close(loop)
+        end
+    else
+        log:error("no pending login")
+    end
+end
+
+local function on_login_timeout_event(loop, io, revents)
+    local login_state = state.login_state
+    if login_state then
+        log:warn("timeout period has elapsed for " .. login_state.server:getpeername())
+        connection_close(loop)
+    else
+        log:error("no pending login")
     end
 end
 
@@ -259,62 +363,91 @@ local function on_user_idle_event(loop, idle, revents)
     if state.user:has_event(zmq.POLLIN) then
         local incoming_event, err = state.user:recv(zmq.NOBLOCK)
         if incoming_event then
-            local incoming_event, err = data_model.user_command.decode(incoming_event)
+            local incoming_event, err = data_model.user_request.decode(incoming_event)
             if err then
-                log:error("\"" .. err .. "\" when decoding data from " .. config.user.pair.client)
+                log:error("\"" .. err .. "\" when decoding data from " .. config.client.ipc)
             else
-                if data_model.user_connect.kindof(incoming_event) then
-                    if state.pending_state then
-                        log:error("current pending connection to " ..state.command:peername())
-                    elseif state.active_state then
-                        log:error("current active connection with " ..state.command:peername())
+                if data_model.user_login_request.kindof(incoming_event) then
+                    if state.login_state then
+                        log:error("current login attempt ongoing")
+                    elseif state.authentication_token then
+                        log:error("already logged in")
                     else
-                        local command = socket.tcp()
-                        command:connect(incoming_event.host, incoming_event.port)
-                        local command, err = ssl.wrap(command, config.client.ssl_params)
+                        log:info("attempting login as " .. incoming_event.login)
+                        local server = socket.tcp()
+                        server:connect(config.authenticator.host, config.authenticator.port)
+                        local server, err = ssl.wrap(server, config.authenticator.ssl_params)
                         if err then
-                            log:warn("\"" .. err .. "\" while attempting tls handshake with " .. command:getpeername())
+                            log:warn("\"" .. err .. "\" while attempting tls handshake with " .. server:getpeername())
+                            connection_close(loop)
                         else
-                            log:info("connecting to  " .. command:getpeername())
+                            server:settimeout(0)
+                            local login_state = {}
+                            login_state.login = incoming_event.login
+                            login_state.password = incoming_event.password
+                            login_state.server = server
+                            login_state.server_io_watcher = ev.IO.new(on_login_handshake_io_event, server:getfd(), ev.READ)
+                            login_state.server_io_watcher:start(loop)
+                            login_state.timer_watcher = ev.Timer.new(on_login_timeout_event, config.client.timeout_period, 0)
+                            login_state.timer_watcher:start(loop)
+                            state.login_state = login_state
+                            on_login_handshake_io_event(loop, io, revents)
+                        end
+                    end
+                elseif data_model.user_connection_request.kindof(incoming_event) then
+                    if state.pending_state then
+                        log:error("current pending connection with " ..state.pending_state.server:peername())
+                    elseif state.active_state then
+                        log:error("current active connection with " ..state.active_state.server:peername())
+                    elseif state.authentication_token then
+                        local server = socket.tcp()
+                        server:connect(incoming_event.host, incoming_event.port)
+                        local server, err = ssl.wrap(server, config.client.ssl_params)
+                        if err then
+                            log:warn("\"" .. err .. "\" while attempting tls handshake with " .. server:getpeername())
+                        else
+                            log:info("connecting to  " .. server:getpeername())
                             local pending_state = {}
-                            pending_state.command = command
+                            pending_state.server = server
                             pending_state.timer_watcher = ev.Timer.new(on_authentication_timeout_event, config.client.authentication_period, 0)
                             pending_state.timer_watcher:start(loop)
-                            pending_state.command:settimeout(0)
-                            pending_state.event = socket.udp()
-                            pending_state.event:setpeername(incoming_event.host, incoming_event.port)
-                            pending_state.event:settimeout(0)
-                            pending_state.authentication_token = incoming_event.authentication_token
-                            pending_state.command_io_watcher = ev.IO.new(on_command_handshake_io_event, command:getfd(), ev.READ)
-                            pending_state.command_io_watcher:start(loop)
+                            pending_state.server:settimeout(0)
+                            pending_state.stream = socket.udp()
+                            pending_state.stream:setpeername(incoming_event.host, incoming_event.port)
+                            pending_state.stream:settimeout(0)
+                            pending_state.server_io_watcher = ev.IO.new(on_server_handshake_io_event, server:getfd(), ev.READ)
+                            pending_state.server_io_watcher:start(loop)
                             state.pending_state = pending_state
-                            on_command_handshake_io_event(loop, idle, revents)
+                            on_server_handshake_io_event(loop, idle, revents)
                         end
+                    else
+                        log:error("not logged in")
                     end
                 else
                     if state.active_state then
-                        if data_model.user_example_command.kindof(incoming_event) then
-                            local event = data_model.client_example_command.encode{
-                                command = incoming_event.command
+                        local active_state = state.active_state
+                        if data_model.client_state_response.kindof(incoming_event) then
+                            local event = data_model.server_state_response.encode{
+                                user = incoming_event.user
                             }
-                            local _, err = state.active_state.command:send(event)
+                            local _, err = active_state.server:send(event)
                             if err then
-                                log:warn("\"" .. err:msg() .. "\" while sending to " .. state.active_state.command:getpeername())
+                                log:warn("\"" .. err:msg() .. "\" while sending to " .. active_state.server:getpeername())
                                 connection_close(loop)
                             end
-                        elseif data_model.user_example_action.kindof(incoming_event) then
-                            local event = data_model.client_example_action.encode{
-                                action = incoming_event.action
+                        elseif data_model.client_stream_response.kindof(incoming_event) then
+                            local event = data_model.server_stream_response.encode{
+                                user = incoming_event.user
                             }
-                            event = codec.encode(event, state.active_state.counter, state.active_state.epoch, incoming_event.traffic_key)
-                            state.active_state.counter = state.active_state.counter + 1
-                            local _, err = state.active_state.event:send(event)
+                            event = codec.encode(event, active_state.counter, active_state.epoch, active_state.traffic_key)
+                            active_state.counter = active_state.counter + 1
+                            local _, err = active_state.stream:send(event)
                             if err then
-                                log:warn("\"" .. err:msg() .. "\" while sending to " .. state.active_state.event:getpeername())
+                                log:warn("\"" .. err:msg() .. "\" while sending to " .. active_state.stream:getpeername())
                                 connection_close(loop)
                             end
                         else
-                            log:error("unimplemented command kind " .. incoming_event._kind .. " received from " .. config.user.pair.client)
+                            log:error("unimplemented " .. incoming_event._kind .. " received from " .. config.client.ipc)
                         end
                     else
                         log:error("no active connection")
@@ -323,44 +456,11 @@ local function on_user_idle_event(loop, idle, revents)
             end
         elseif err:no() == zmq.errors.EAGAIN then
         else
-            log:error("\"" .. err:msg() .. "\" when decoding data from " .. config.user.pair.client)
+            log:error("\"" .. err:msg() .. "\" when decoding data from " .. config.client.ipc)
         end
     else
         state.user_idle_watcher:stop(loop)
         state.user_io_watcher:start(loop)
-    end
-end
-
-local function connection_close(loop)
-    log:info("closing connection")
-    local current_state = state.pending_state or state.active_state
-    state.pending_state = nil
-    state.active_state = nil
-    if current_state then
-        if current_state.authenticator_idle_watcher then
-            current_state.authenticator_idle_watcher:stop(loop)
-        end
-        if current_state.authenticator_io_watcher then
-            current_state.authenticator_io_watcher:stop(loop)
-        end
-        if current_state.authenticator then
-            current_state.authenticator:close()
-        end
-        if current_state.timer_watcher then
-            current_state.timer_watcher:close()
-        end
-        if current_state.event_io_watcher then
-            current_state.event_io_watcher:stop(loop)
-        end
-        if current_state.event then
-            current_state.event:close()
-        end
-        if current_state.command_io_watcher then
-            current_state.command_io_watcher:stop(loop)
-        end
-        if current_state.command then
-            current_state.command:close()
-        end
     end
 end
 
@@ -370,7 +470,7 @@ local function start(loop)
     state = {}
     state.ipc_context = zmq.context{io_threads = 1}
     state.user = state.ipc_context:socket{zmq.PAIR,
-        connect = config.user.pair.client
+        bind = config.client.ipc
     }
     state.user_io_watcher = ev.IO.new(on_user_io_event, state.user:get_fd(), ev.READ)
     state.user_idle_watcher = ev.Idle.new(on_user_idle_event)

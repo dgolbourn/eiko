@@ -1,18 +1,21 @@
 {
-    "$id": "#client_example_command",
+    "$id": "#game_state_response",
     "$schema": "http://json-schema.org/schema#",
-    "$comment": "string",
     "type": "object",
     "properties": {
         "_kind": {
-            "const": "client_example_command"
+            "const": "game_state_response"
         },
-        "command": {
+        "uuid" : {
+            "type": "string"
+        },
+        "user" : {
             "type": "object"
         }
     },
     "required": [
         "_kind",
-        "command"
+        "uuid",
+        "user"
     ]
 }

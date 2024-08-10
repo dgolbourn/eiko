@@ -1,5 +1,4 @@
 local mongo = require "mongo"
-local uuid = require "lua_uuid"
 local config = require "eiko.config"
 local socket = require "socket"
 local ssl = require "ssl"
@@ -7,12 +6,13 @@ local data_model = require "eiko.data_model"
 local codec = require "eiko.codec"
 local sodium = require "sodium"
 local log = require "eiko.logs".defaultLogger()
+local ev = require "ev"
 
 
-local state = {}
+local state = nil
 
 local function client_state_close(client_state, loop)
-    log:debug("closing connection with " .. client_state.peername) 
+    log:debug("closing connection with " .. client_state.peername)
     if client_state.client then
         client_state.client:close()
     end
@@ -38,7 +38,7 @@ local function authorise(client_state, incoming_event)
             local client_authentication_token = codec.authentication_token()
             local now = mongo.DateTime(os.clock())
             collection:updateOne(query, {
-                server_authentication_token = server_authentication_token,
+                server_authentication_token = user.server_authentication_token,
                 client_authentication_token = client_authentication_token,
                 client_authentication_now = now
             })
@@ -95,8 +95,8 @@ end
 local function verify(client_state, incoming_event)
     local collection = state.mongo:getCollection("eiko", "user")
     local query = mongo.BSON{
-        server_authentication_token = server_authentication_token,
-        client_authentication_token = client_authentication_token
+        server_authentication_token = incoming_event.server_authentication_token,
+        client_authentication_token = incoming_event.client_authentication_token
     }
     local user = collection:findOne(query)
     if user then
@@ -120,7 +120,7 @@ local function verify(client_state, incoming_event)
     end
 end
 
-local function on_client_command_io_event(peername, loop, io, revents)
+local function on_client_io_event(peername, loop, io, revents)
     local client_state = state.clients[peername]
     if client_state then
         local data, err, partial = client_state.client:receive('*l', client_state.buffer)
@@ -128,11 +128,11 @@ local function on_client_command_io_event(peername, loop, io, revents)
         if data then
             local incoming_event, err = data_model.authenticator_request.decode(data)
             if incoming_event then
-                if authenticator_authorise_request.kindof(incoming_event) then
+                if data_model.authenticator_authorise_request.kindof(incoming_event) then
                     authorise(client_state, incoming_event)
-                elseif authenticator_login_request.kindof(incoming_event) then
+                elseif data_model.authenticator_login_request.kindof(incoming_event) then
                     login(client_state, incoming_event)
-                elseif authenticator_verify_request.kindof(incoming_event) then
+                elseif data_model.authenticator_verify_request.kindof(incoming_event) then
                     verify(client_state, incoming_event)
                 else
                     log:error("unimplemented request " .. incoming_event._kind .. " from " ..peername)
@@ -153,7 +153,7 @@ end
 
 local function on_client_timeout_event(peername, loop, io, revents)
     local client_state = state.clients[peername]
-    if client_state
+    if client_state then
         log:warn("timeout period has elapsed for " .. peername)
         client_state_close(client_state, loop)
     else
@@ -186,7 +186,7 @@ local function on_new_client_io_event(loop, io, revents)
     local client = state.tcp:accept()
     local peername = client:getpeername()
     log:info("connection from unverified " .. peername)
-    local client, err = ssl.wrap(client, config.command.ssl_params)
+    local client, err = ssl.wrap(client, config.authenticator.ssl_params)
     if err then
         log:warn("\"" .. err .. "\" while attempting tls handshake with " .. peername)
     else
@@ -212,8 +212,8 @@ local function start(loop)
     loop = loop or ev.Loop.default
     state = {}
     state.tcp = socket.tcp()
-    state.tcp:bind(config.command.host, config.command.port)
-    state.tcp:listen(config.command.max_clients)
+    state.tcp:bind(config.authenticator.host, config.authenticator.port)
+    state.tcp:listen(config.authenticator.max_clients)
     state.tcp:settimeout(0)
     state.new_client_io_watcher = ev.IO.new(on_new_client_io_event, state.tcp:getfd(), ev.READ)
     state.new_client_io_watcher:start(loop)

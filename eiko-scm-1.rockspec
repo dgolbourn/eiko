@@ -6,7 +6,6 @@ source = {
 }
 dependencies = {
    "lua==5.1",
-   "luaunit",
    "luasocket",
    "luasec",
    "luasodium",
@@ -30,13 +29,18 @@ build = {
    modules = {
       eiko = "src/eiko.lua",
       ["eiko.codec"] = "src/codec.lua",
-      ["eiko.command"] = "src/command.lua",
-      ["eiko.event"] = "src/event.lua",
+      ["eiko.server"] = "src/server.lua",
+      ["eiko.client"] = "src/client.lua",
+      ["eiko.authenticator"] = "src/authenticator.lua",
       ["eiko.data_model"] = "src/data_model.lua",
       ["eiko.logs"] = "src/logs.lua",
       ["eiko.config"] = "src/config.lua",
    },
    copy_directories = {"res"}
+}
+test_dependencies = {
+   "luaunit",
+   "luacheck"
 }
 test = {
    type = "command",

@@ -1,18 +1,17 @@
 {
-    "$id": "#client_example_action",
+    "$id": "#server_state_response",
     "$schema": "http://json-schema.org/schema#",
-    "$comment": "string",
     "type": "object",
     "properties": {
         "_kind": {
-            "const": "client_example_action"
+            "const": "server_state_response"
         },
-        "action": {
+        "user" : {
             "type": "object"
         }
     },
     "required": [
         "_kind",
-        "action"
+        "user"
     ]
 }

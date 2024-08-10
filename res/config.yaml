@@ -1,15 +1,5 @@
 ---
-event:
-  key_expiry_check_period: 1
-  message_history_depth: 20
-  authentication_period: 30
-  traffic_key_period: 86400
-  host: localhost
-  port: 21098
-  pair:
-    command: ipc://@event/pair/command
-
-command:
+server:
   ssl_params:
     mode: server
     protocol: tlsv1_2
@@ -21,6 +11,9 @@ command:
   host: localhost
   port: 21098
   authentication_period: 30
+  message_history_depth: 20
+  traffic_key_period: 86400
+  ipc: ipc://@server
 
 authenticator:
   ssl_params:
@@ -38,18 +31,12 @@ authenticator:
   client_authentication_period: 300
   db: mongodb://root:example@mongo/?socketTimeoutMS=10000
 
-game:
-  pair:
-    event: ipc://@game/pair/event
-    command: ipc://@game/pair/command
-
-user:
-  pair:
-    client: ipc://@user/pair/client
-
 client:
   ssl_params:
     mode: client
     protocol: any
     verify: none
     options: [all]
+  timeout_period: 10
+  authentication_period: 30
+  ipc: ipc://@client

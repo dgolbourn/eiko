@@ -1,22 +1,21 @@
 {
-    "$id": "#game_command",
+    "$id": "#client_stream_request",
     "$schema": "http://json-schema.org/schema#",
-    "$comment": "string",
     "type": "object",
     "properties": {
         "_kind": {
-            "const": "game_command"
+            "const": "client_stream_request"
         },
-        "id": {
-            "type": "string"
+        "global" : {
+            "type": "object"
         },
-        "command": {
+        "user" : {
             "type": "object"
         }
     },
     "required": [
         "_kind",
-        "id",
-        "command"
+        "global",
+        "user"
     ]
 }
