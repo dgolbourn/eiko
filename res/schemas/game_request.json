@@ -1,7 +1,6 @@
 {
     "$id": "#game_request",
     "$schema": "http://json-schema.org/schema#",
-    "$comment": "string",
     "anyOf": [
         { "$ref": "game_stream_request" },
         { "$ref": "game_state_request" }

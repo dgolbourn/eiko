@@ -1,9 +1,8 @@
 local socket = require "socket"
 local ev = require "ev"
 local ssl = require "ssl"
-local config = require "config"
+local config = require "eiko.config"
 local log = require "eiko.logs".defaultLogger()
-local event = require "eiko.event"
 local data_model = require "eiko.data_model"
 local codec = require "eiko.codec"
 local zmq = require "lzmq"
@@ -42,7 +41,7 @@ end
 
 local function on_traffic_key_timeout_event(peername, loop, io, revents)
     local client_state = state.clients[peername]
-    if client_state
+    if client_state then
         log:info("traffic key period has elapsed for " .. peername)
         client_state.traffic_key = codec.traffic_key()
         local event = data_model.server_traffic_key_request.encode{
@@ -70,24 +69,28 @@ local function verify(host, port, data)
         else
             local client_state = state.clients[pending.uuid]
             if client_state then
-                log:info("authenticated " .. pending.uuid .. " at " .. peername)
-                state.pending[pending.uuid] = nil
-                client_state.traffic_key = pending.traffic_key
-                client_state.port = port
-                client_state.host = host
-                client_state.udp_peername = peername
-                client_state.history = {}
-                client_state.epoch = 0
-                client_state.ack = 0
-                client_state.counter = 0
-                client_state.timer_watcher:stop(loop)
-                local timer_event = function(loop, io, revents)
-                    on_traffic_key_timeout_event(peername, loop, io, revents)
+                if incoming_event.authentication_token == client_state.authentication_token then
+                    log:info("authenticated " .. pending.uuid .. " at " .. peername)
+                    state.pending[pending.uuid] = nil
+                    client_state.traffic_key = pending.traffic_key
+                    client_state.port = port
+                    client_state.host = host
+                    client_state.udp_peername = peername
+                    client_state.history = {}
+                    client_state.epoch = 0
+                    client_state.ack = 0
+                    client_state.counter = 0
+                    client_state.timer_watcher:stop(loop)
+                    local timer_event = function(loop, io, revents)
+                        on_traffic_key_timeout_event(peername, loop, io, revents)
+                    end
+                    client_state.timer_watcher = ev.Timer.new(timer_event, config.server.traffic_key_period, 0)
+                    client_state.timer_watcher:start(loop)
+                    state.clients[peername] = client_state
+                    return
+                else
+                    log:error("incorrect authentication token received from " .. pending.uuid)
                 end
-                client_state.timer_watcher = ev.Timer.new(timer_event, config.server.traffic_key_period, 0)
-                client_state.timer_watcher:start(loop)
-                state.clients[peername] = client_state
-                return
             else
                 log:warn("no pending authentication for " .. peername)
             end
@@ -112,7 +115,7 @@ local function decode(client_state, data)
             client_state.counter = counter
             if epoch > client_state.ack then
                 client_state.ack = epoch
-                for past_epoch, previous in pairs(client_state.history) do
+                for past_epoch, _ in pairs(client_state.history) do
                     if past_epoch < client_state.ack then
                         client_state.history[past_epoch] = nil
                     end
@@ -142,6 +145,32 @@ local function on_stream_io_event(loop, io, revents)
     end
 end
 
+local function on_client_io_event(uuid, loop, io, revents)
+    local client_state = state.clients[uuid]
+    if client_state then
+        local data, err, partial = client_state.client:receive('*l', client_state.buffer)
+        client_state.buffer = partial
+        if data then
+            local incoming_event, err = data_model.server_state_reponse.decode(data)
+            if incoming_event then
+                local event = data_model.game_state_response.encode{
+                    uuid = uuid,
+                    user = incoming_event.user
+                }
+                state.game:send(event)
+            else
+                log:error("\"" .. err .. "\" when decoding data from " .. uuid)
+            end
+        elseif err == "timeout" then
+        else
+            log:warn("\"" .. err .. "\" while receiving from " .. uuid)
+            client_state_close(client_state, loop)
+        end
+    else
+        log:warn("no verified client " .. uuid)
+    end
+end
+
 local function on_verify_io_event(peername, loop, io, revents)
     local client_state = state.clients[peername]
     if client_state then
@@ -161,7 +190,7 @@ local function on_verify_io_event(peername, loop, io, revents)
                 client_state.uuid = incoming_event.uuid
                 local uuid = incoming_event.uuid
                 local io_event = function(loop, io, revents)
-                    on_client_command_io_event(uuid, loop, io, revents)
+                    on_client_io_event(uuid, loop, io, revents)
                 end
                 client_state.client_io_watcher:callback(io_event)
                 client_state.client_io_watcher:start(loop)
@@ -172,8 +201,8 @@ local function on_verify_io_event(peername, loop, io, revents)
                 state.pending[client_state.uuid] = pending
                 state.clients[client_state.uuid] = client_state
                 local event = data_model.server_stream_authentication_request.encode{
-                    authentication_token = incoming_event.authentication_token,
-                    traffic_key = incoming_event.traffic_key
+                    authentication_token = pending.authentication_token,
+                    traffic_key = pending.traffic_key
                 }
                 local _, err = client_state.client:send(event)
                 if err then
@@ -204,8 +233,8 @@ local function on_authenticator_handshake_io_event(peername, loop, io, revents)
             end
             client_state.authenticator_io_watcher:callback(io_event)
             local event = data_model.authenticator_verify_request.encode{
-                server_authentication_token = client_state.authentication_token,
-                client_authentication_token = incoming_event.authentication_token
+                server_authentication_token = client_state.server_authentication_token,
+                client_authentication_token = client_state.client_authentication_token
             }
             local _, err = client_state.authenticator:send(event)
             if err then
@@ -230,7 +259,7 @@ local function on_authentication_io_event(peername, loop, io, revents)
         local data, err, partial = client_state.client:receive('*l', client_state.buffer)
         client_state.buffer = partial
         if err == "timeout" then
-        else if err then
+        elseif err then
             log:warn("\"" .. err .. "\" when expecting authentication of " .. peername)
             client_state_close(client_state, loop)
         else
@@ -250,6 +279,7 @@ local function on_authentication_io_event(peername, loop, io, revents)
                     local io_event = function(loop, io, revents)
                         on_authenticator_handshake_io_event(peername, loop, io, revents)
                     end
+                    client_state.client_authentication_token = incoming_event.authentication_token
                     client_state.authenticator = authenticator
                     client_state.authenticator_io_watcher = ev.IO.new(io_event, authenticator:getfd(), ev.READ)
                     client_state.authenticator_io_watcher:start(loop)
@@ -265,35 +295,9 @@ local function on_authentication_io_event(peername, loop, io, revents)
     end
 end
 
-local function on_client_command_io_event(uuid, loop, io, revents)
-    local client_state = state.clients[uuid]
-    if client_state then
-        local data, err, partial = client_state.client:receive('*l', client_state.buffer)
-        client_state.buffer = partial
-        if data then
-            local incoming_event, err = data_model.server_state_reponse.decode(data)
-            if incoming_event then
-                local event = data_model.game_state_response.encode{
-                    uuid = uuid,
-                    user = incoming_event.user
-                }
-                state.game:send(event)
-            else
-                log:error("\"" .. err .. "\" when decoding data from " .. uuid)
-            end
-        elseif err == "timeout" then
-        else
-            log:warn("\"" .. err .. "\" while receiving from " .. uuid)
-            client_state_close(client_state, loop)
-        end
-    else
-        log:warn("no verified client " .. uuid)
-    end
-end
-
 local function on_authentication_timeout_event(peername, loop, io, revents)
     local client_state = state.clients[peername]
-    if client_state
+    if client_state then
         log:warn("authentication period has elapsed for " .. peername)
         client_state_close(client_state, loop)
     else
@@ -311,9 +315,9 @@ local function on_handshake_io_event(peername, loop, io, revents)
                 on_authentication_io_event(peername, loop, io, revents)
             end
             client_state.client_io_watcher:callback(io_event)
-            client_state.authentication_token = codec.authentication_token()
+            client_state.server_authentication_token = codec.authentication_token()
             local event = data_model.server_authentication_request.encode{
-                authentication_token = client_state.authentication_token
+                authentication_token = client_state.server_authentication_token
             }
             local _, err = client_state.client:send(event)
             if err then

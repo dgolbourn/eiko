@@ -1,7 +1,6 @@
 {
     "$id": "#game_stream_response",
     "$schema": "http://json-schema.org/schema#",
-    "$comment": "string",
     "type": "object",
     "properties": {
         "_kind": {

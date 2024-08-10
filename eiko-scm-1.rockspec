@@ -6,7 +6,6 @@ source = {
 }
 dependencies = {
    "lua==5.1",
-   "luaunit",
    "luasocket",
    "luasec",
    "luasodium",
@@ -38,6 +37,10 @@ build = {
       ["eiko.config"] = "src/config.lua",
    },
    copy_directories = {"res"}
+}
+test_dependencies = {
+   "luaunit",
+   "luacheck"
 }
 test = {
    type = "command",

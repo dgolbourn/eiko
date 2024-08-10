@@ -37,4 +37,6 @@ client:
     protocol: any
     verify: none
     options: [all]
+  timeout_period: 10
+  authentication_period: 30
   ipc: ipc://@client

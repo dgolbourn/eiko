@@ -1,16 +1,19 @@
 local ev = require "ev"
 local signal = require "signal"
 
-local command = require "eiko.command"
-command.start(ev.Loop.default)
+local server = require "eiko.server"
+server.start(ev.Loop.default)
 
-local event = require "eiko.event"
-event.start(ev.Loop.default)
+local authenticator = require "eiko.authenticator"
+authenticator.start(ev.Loop.default)
 
+local client = require "eiko.client"
+client.start(ev.Loop.default)
 
 local function on_sigint_event(loop, sig, revents)
-    event.stop(loop)
-    command.stop(loop)
+    server.stop(loop)
+    authenticator.stop(loop)
+    client.stop(loop)
     loop:unloop()
 end
 local signal_watcher = ev.Signal.new(on_sigint_event, signal.SIGINT)

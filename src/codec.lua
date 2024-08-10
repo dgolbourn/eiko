@@ -33,7 +33,7 @@ end
 local function encode(message, counter, epoch, key)
     local compressed = snappy.compress(message)
     local epochs = string.format("%016X", epoch) .. string.format("%016X", counter)
-    local epochscompressed = epochs .. compressed    
+    local epochscompressed = epochs .. compressed
     local nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
     local secret = sodium.crypto_secretbox_easy(epochscompressed, nonce, key)
     local noncesecret = nonce .. secret
@@ -46,7 +46,7 @@ local function decode(noncesecret, key)
     local epochscompressed = sodium.crypto_secretbox_open_easy(secret, nonce, key)
     local epoch = tonumber(string.sub(epochscompressed, 1, 16), 16)
     local counter = tonumber(string.sub(epochscompressed, 17, 32), 16)
-    local compressed = string.sub(epochscompressed, 33, -1)    
+    local compressed = string.sub(epochscompressed, 33, -1)
     local message = snappy.uncompress(compressed)
     return message, counter, epoch
 end

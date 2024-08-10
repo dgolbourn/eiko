@@ -23,27 +23,21 @@ local function schema_validator(url)
     local schema = resolver(url)
     local validator, err = jsonschema.generate_validator(schema, {external_resolver = resolver})
     if validator then
-        local _decode = function(obj) return obj end
-        local _encode = function(obj) return obj end
-        if schema["$comment"] == "string" then
-            _decode = cjson.decode
-            _encode = cjson.encode
-        end
-        local kind = kind(schema)        
+        local kind = kind(schema)
         local encode = function(obj)
             obj._kind = kind
-            return _encode(obj) .. '\n'
+            return cjson.encode(obj) .. '\n'
         end
         local decode = function(message)
-            local obj, err = _decode(message)
+            local obj, err = cjson.decode(message)
             if obj then
                 local valid, err = validator(obj)
                 if valid then
                     return obj
                 end
                 return nil, err
-            else 
-                return nil, err                
+            else
+                return nil, err
             end
         end
         local kindof = function(obj)

@@ -3,9 +3,44 @@ local ssl = require "ssl"
 local codec = require "eiko.codec"
 local data_model = require "eiko.data_model"
 local config = require "eiko.config"
+local log = require "eiko.logs".defaultLogger()
+local zmq = require "lzmq"
+local ev = require "ev"
 
 
 local state = {}
+
+
+local function connection_close(loop)
+    log:info("closing connection")
+    local current_state = state.login_state or state.pending_state or state.active_state
+    state.login_state = nil
+    state.pending_state = nil
+    state.active_state = nil
+    if current_state then
+        if current_state.authenticator_io_watcher then
+            current_state.authenticator_io_watcher:stop(loop)
+        end
+        if current_state.authenticator then
+            current_state.authenticator:close()
+        end
+        if current_state.timer_watcher then
+            current_state.timer_watcher:close()
+        end
+        if current_state.stream_io_watcher then
+            current_state.stream_io_watcher:stop(loop)
+        end
+        if current_state.stream then
+            current_state.stream:close()
+        end
+        if current_state.server_io_watcher then
+            current_state.server_io_watcher:stop(loop)
+        end
+        if current_state.server then
+            current_state.server:close()
+        end
+    end
+end
 
 local function on_server_io_event(loop, io, revents)
     local active_state = state.active_state
@@ -96,7 +131,7 @@ local function on_stream_authentication_io_event(peername, loop, io, revents)
                 pending_state.traffic_key = incoming_event.traffic_key
                 pending_state.epoch = 0
                 pending_state.counter = 0
-                event = data_model.server_stream_authentication_response.encode{
+                local event = data_model.server_stream_authentication_response.encode{
                     authentication_token = incoming_event.authentication_token
                 }
                 event = codec.encode(event, pending_state.counter, pending_state.epoch, pending_state.traffic_key)
@@ -168,7 +203,7 @@ local function on_authenticator_handshake_io_event(loop, io, revents)
             log:info("successful tls handshake with " .. pending_state.authenticator:getpeername())
             pending_state.authenticator_io_watcher:callback(on_server_authorisation_io_event)
             local event = data_model.authenticator_authorise_request.encode{
-                server_authentication_token = incoming_event.authentication_token,
+                server_authentication_token = pending_state.authentication_token,
                 client_authentication_token = state.authentication_token
             }
             local _, err = pending_state.authenticator:send(event)
@@ -210,6 +245,7 @@ local function on_server_verify_io_event(loop, io, revents)
                     connection_close(loop)
                 else
                     authenticator:settimeout(0)
+                    pending_state.authentication_token = incoming_event.authentication_token
                     pending_state.authenticator = authenticator
                     pending_state.authenticator_io_watcher = ev.IO.new(on_authenticator_handshake_io_event, authenticator:getfd(), ev.READ)
                     pending_state.authenticator_io_watcher:start(loop)
@@ -231,7 +267,7 @@ local function on_server_handshake_io_event(loop, io, revents)
         local success, err = pending_state.server:dohandshake()
         if success then
             log:info("successful tls handshake with " .. pending_state.server:getpeername())
-            server:callback(on_server_verify_io_event)
+            pending_state.server:callback(on_server_verify_io_event)
         elseif err == "timeout" or err == "wantread" or err == "wantwrite" then
         else
             log:warn("\"" .. err .. "\" while attempting tls handshake with " .. pending_state.server:getpeername())
@@ -311,7 +347,7 @@ end
 local function on_login_timeout_event(loop, io, revents)
     local login_state = state.login_state
     if login_state then
-        log:warn("authentication period has elapsed for " .. login_state.server:getpeername())
+        log:warn("timeout period has elapsed for " .. login_state.server:getpeername())
         connection_close(loop)
     else
         log:error("no pending login")
@@ -346,14 +382,14 @@ local function on_user_idle_event(loop, idle, revents)
                             connection_close(loop)
                         else
                             server:settimeout(0)
-                            login_state = {}
+                            local login_state = {}
                             login_state.login = incoming_event.login
                             login_state.password = incoming_event.password
                             login_state.server = server
                             login_state.server_io_watcher = ev.IO.new(on_login_handshake_io_event, server:getfd(), ev.READ)
                             login_state.server_io_watcher:start(loop)
-                            login_state.timer_watcher = ev.Timer.new(on_login_timeout_event, config.client.authentication_period, 0)
-                            login_state.timer_watcher:start(loop)                            
+                            login_state.timer_watcher = ev.Timer.new(on_login_timeout_event, config.client.timeout_period, 0)
+                            login_state.timer_watcher:start(loop)
                             state.login_state = login_state
                             on_login_handshake_io_event(loop, io, revents)
                         end
@@ -425,37 +461,6 @@ local function on_user_idle_event(loop, idle, revents)
     else
         state.user_idle_watcher:stop(loop)
         state.user_io_watcher:start(loop)
-    end
-end
-
-local function connection_close(loop)
-    log:info("closing connection")
-    local current_state = state.login_state or state.pending_state or state.active_state
-    state.login_state = nil
-    state.pending_state = nil
-    state.active_state = nil
-    if current_state then
-        if current_state.authenticator_io_watcher then
-            current_state.authenticator_io_watcher:stop(loop)
-        end
-        if current_state.authenticator then
-            current_state.authenticator:close()
-        end
-        if current_state.timer_watcher then
-            current_state.timer_watcher:close()
-        end
-        if current_state.stream_io_watcher then
-            current_state.stream_io_watcher:stop(loop)
-        end
-        if current_state.stream then
-            current_state.stream:close()
-        end
-        if current_state.server_io_watcher then
-            current_state.server_io_watcher:stop(loop)
-        end
-        if current_state.server then
-            current_state.server:close()
-        end
     end
 end
 

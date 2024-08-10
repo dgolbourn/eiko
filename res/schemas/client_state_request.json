@@ -1,7 +1,6 @@
 {
     "$id": "#client_state_request",
     "$schema": "http://json-schema.org/schema#",
-    "$comment": "string",
     "type": "object",
     "properties": {
         "_kind": {
