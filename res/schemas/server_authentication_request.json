@@ -1,18 +1,18 @@
 {
-    "$id": "#event_connection_request",
+    "$id": "#server_authentication_request",
     "$schema": "http://json-schema.org/schema#",
     "$comment": "string",    
     "type": "object",
     "properties": {
         "_kind": {
-            "const": "event_connection_request"
+            "const": "server_authentication_request"
         },
-        "id": {
+        "authentication_token": {
             "type": "string"
         }
     },
     "required": [
         "_kind",
-        "id"
+        "authentication_token"
     ]
 }

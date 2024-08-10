@@ -1,0 +1,25 @@
+{
+    "$id": "#game_state_request",
+    "$schema": "http://json-schema.org/schema#",
+    "$comment": "string",
+    "type": "object",
+    "properties": {
+        "_kind": {
+            "const": "game_state_request"
+        },
+        "global" : {
+            "type": "object"
+        },
+        "user" : {
+            "type": "object",
+            "additionalProperties": {
+                "type": "object"
+            }
+        }
+    },
+    "required": [
+        "_kind",
+        "global",
+        "user"
+    ]
+}

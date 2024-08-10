@@ -1,9 +1,0 @@
-{
-    "$id": "#client_action",
-    "$schema": "http://json-schema.org/schema#",
-    "$comment": "string",
-    "anyOf": [
-        { "$ref": "client_example_action" },
-        { "$ref": "client_ack_action" }
-    ]
-}

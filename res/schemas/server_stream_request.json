@@ -1,18 +1,22 @@
 {
-    "$id": "#user_status",
+    "$id": "#server_stream_request",
     "$schema": "http://json-schema.org/schema#",
     "$comment": "string",
     "type": "object",
     "properties": {
         "_kind": {
-            "const": "user_status"
+            "const": "server_stream_request"
         },
-        "status": {
+        "global" : {
+            "type": "object"
+        },
+        "user" : {
             "type": "object"
         }
     },
     "required": [
         "_kind",
-        "status"
+        "global",
+        "user"
     ]
 }

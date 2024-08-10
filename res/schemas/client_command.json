@@ -1,8 +1,0 @@
-{
-    "$id": "#client_command",
-    "$schema": "http://json-schema.org/schema#",
-    "$comment": "string",    
-    "anyOf": [
-        { "$ref": "client_example_command" }
-    ]
-}

@@ -1,18 +1,22 @@
 {
-    "$id": "#client_authentication_response",
+    "$id": "#user_login_request",
     "$schema": "http://json-schema.org/schema#",
     "$comment": "string",
     "type": "object",
     "properties": {
         "_kind": {
-            "const": "client_authentication_reponse"
+            "const": "user_login_request"
         },
-        "authentication_token": {
+        "login" : {
+            "type": "string"
+        },
+        "password" : {
             "type": "string"
         }
     },
     "required": [
         "_kind",
-        "authentication_token"
+        "login",
+        "password"
     ]
 }
