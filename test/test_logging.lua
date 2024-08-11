@@ -3,7 +3,8 @@ local lu = require "luaunit"
 Test = {}
 
 function Test:test_logging()
-    local log = require "eiko.logs".defaultLogger()
+    require "eiko.logs"
+    local log = require "logging".defaultLogger()
     log:debug("debug")
     log:info("info")
     log:warn("warn")
