@@ -62,7 +62,7 @@ local function on_server_io_event(loop, io, revents)
                 }
                 active_state.client:send(event)
             else
-                log:warn("\"" .. err .. "\" while receiving data from " .. active_state.udp_peername)
+                log:warn("\"" .. err .. "\" while receiving data from " .. active_state.tcp_peername)
                 connection_close(loop)
             end
         end
@@ -87,7 +87,7 @@ local function on_stream_io_event(loop, io, revents)
                 active_state.epoch = epoch
                 active_state.previous[epoch] = incoming_event
                 for past_epoch, _ in pairs(active_state.previous) do
-                    if active_state.epoch - past_epoch > config.event.message_history_depth then
+                    if active_state.epoch - past_epoch > config.client.message_history_depth then
                         active_state.previous[past_epoch] = nil
                     end
                 end
@@ -100,7 +100,7 @@ local function on_stream_io_event(loop, io, revents)
                         global = incoming_event.global,
                         user = incoming_event.user
                     }
-                    active_state.client:send(event)
+                    state.user:send(event)
                     local event = data_model.server_stream_response.encode{}
                     event = codec.encode(event, active_state.counter, active_state.epoch, active_state.traffic_key)
                     active_state.counter = active_state.counter + 1

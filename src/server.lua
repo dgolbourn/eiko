@@ -363,7 +363,7 @@ local function on_game_idle_event(loop, idle, revents)
                         end
                     end
                 elseif data_model.game_stream_request.kindof(incoming_event) then
-                    for uuid, user in incoming_event.user do
+                    for uuid, user in pairs(incoming_event.user) do
                         local client_state = state.clients[uuid]
                         if client_state and client_state.traffic_key then
                             local event = data_model.server_stream_request.encode{
@@ -384,8 +384,7 @@ local function on_game_idle_event(loop, idle, revents)
                                 end
                             end
                             local encoded_message = codec.delta_compress_encode(event, client_state.epoch, previous, previous_epoch, client_state.traffic_key)
-                            state.udp:sendto(encoded_message, client_state.host, client_state.port)
-                            local _, err = client_state.client:send(event)
+                            local _, err = state.udp:sendto(encoded_message, client_state.host, client_state.port)
                             if err then
                                 log:warn("\"" .. err .. "\" while attempting to send to " .. uuid)
                                 client_state_close(client_state, loop)
