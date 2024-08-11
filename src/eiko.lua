@@ -90,6 +90,4 @@ end
 
 idle_watcher:callback(user_login_request)
 
-
-
 ev.Loop.default:loop()
