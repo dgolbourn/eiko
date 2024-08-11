@@ -5,7 +5,7 @@ local ssl = require "ssl"
 local data_model = require "eiko.data_model"
 local codec = require "eiko.codec"
 local sodium = require "sodium"
-local log = require "eiko.logs".defaultLogger()
+local log = require "eiko.logs".authenticator
 local ev = require "ev"
 local uri = require "eiko.uri"
 
