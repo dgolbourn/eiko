@@ -5,7 +5,7 @@ local function geturi(sock)
     local type = sock:getsockname()
     local uri = host
     if family == "inet6" then
-        host = "[" .. host .. "]"
+        uri = "[" .. uri .. "]"
     end
     uri = uri .. ":" .. port
     if type = "stream" then
