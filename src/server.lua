@@ -6,6 +6,7 @@ local log = require "eiko.logs".defaultLogger()
 local data_model = require "eiko.data_model"
 local codec = require "eiko.codec"
 local zmq = require "lzmq"
+local uri = require "eiko.uri"
 
 
 local state = nil
@@ -35,10 +36,6 @@ local function client_state_close(client_state, loop)
     end
 end
 
-local function to_peername(host, port)
-    return "udp/" .. host .. ":" .. port
-end
-
 local function on_traffic_key_timeout_event(peername, loop, io, revents)
     local client_state = state.clients[peername]
     if client_state then
@@ -60,7 +57,7 @@ local function on_traffic_key_timeout_event(peername, loop, io, revents)
 end
 
 local function verify(host, port, data)
-    local peername = to_peername(host, port)
+    local peername = uri("udp", host, port)
     for _, pending in pairs(state.pending) do
         local incoming_event, _, _ = codec.decode(data, pending.traffic_key)
         local incoming_event, err = data_model.server_stream_authentication_response.decode(incoming_event)
@@ -134,7 +131,7 @@ end
 
 local function on_stream_io_event(loop, io, revents)
     local data, host, port = state.udp:receivefrom()
-    local peername = to_peername(host, port)
+    local peername = uri("udp", host, port)
     local client_state = state.clients[peername]
     if client_state then
         log:debug("data received from " .. client_state.uuid)
@@ -416,7 +413,7 @@ end
 
 local function on_new_client_io_event(loop, io, revents)
     local client = state.tcp:accept()
-    local peername = client:getpeername()
+    local peername = uri("tcp", unpack{client:getpeername()})
     log:info("connection from unverified " .. peername)
     local client, err = ssl.wrap(client, config.server.ssl_params)
     if err then

@@ -1,17 +1,16 @@
 local socket = require "socket"
 
-local function geturi(sock)
-    local host, port, family = sock:getpeername()
-    local type = sock:getsockname()
+local function uri(protocol, host, port, family)
+    if not family then
+        local addrinfo = socket.dns.getaddrinfo(host)
+        host = addrinfo[1].addr
+        family = addrinfo[1].family
+    end
     local uri = host
     if family == "inet6" then
         uri = "[" .. uri .. "]"
     end
-    uri = uri .. ":" .. port
-    if type = "stream" then
-        uri = "tcp://" .. uri
-    else
-        uri = "udp://" .. uri
-    end
-    return uri
+    return protocol .. "://" .. uri .. ":" .. port
 end
+
+return uri

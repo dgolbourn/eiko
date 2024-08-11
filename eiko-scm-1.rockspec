@@ -35,6 +35,7 @@ build = {
       ["eiko.data_model"] = "src/data_model.lua",
       ["eiko.logs"] = "src/logs.lua",
       ["eiko.config"] = "src/config.lua",
+      ["eiko.uri"] = "src/uri.lua",
    },
    copy_directories = {"res"}
 }

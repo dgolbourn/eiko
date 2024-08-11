@@ -7,6 +7,7 @@ local codec = require "eiko.codec"
 local sodium = require "sodium"
 local log = require "eiko.logs".defaultLogger()
 local ev = require "ev"
+local uri = require "eiko.uri"
 
 
 local state = nil
@@ -66,23 +67,33 @@ local function login(client_state, incoming_event)
     if user then
         user = user:value()
         if sodium.crypto_pwhash_str_verify(user.hash, incoming_event.password) then
-            local query = mongo.BSON{_id = user._id}
             local user_authentication_token = codec.authentication_token()
             local now = mongo.DateTime(os.clock())
-            collection:updateOne(query, {
-                user_authentication_token = user_authentication_token,
-                user_authentication_now = now
-            })
-            local event = data_model.authenticator_login_response.encode{
-                uuid = user.uuid,
-                display_name = user.display_name,
-                authentication_token = user_authentication_token
-            }
-            local _, err = client_state.client:send(event)
+            local success, err = collection:update({_id = user._id},
+                {
+                    set = {
+                        user_authentication_token = user_authentication_token,
+                        user_authentication_now = now
+                    }
+                },
+                {
+                    upsert=true
+                }
+            )
             if err then
-                log:warn("\"" .. err .. "\" while attempting to send to " .. client_state.peername)
+                log:warn("\"" .. err .. "\" while attempting to update database")
             else
-                log:info("user login by " .. user.uuid .. " from " .. client_state.peername)
+                local event = data_model.authenticator_login_response.encode{
+                    uuid = user.uuid,
+                    display_name = user.display_name,
+                    authentication_token = user_authentication_token
+                }
+                local _, err = client_state.client:send(event)
+                if err then
+                    log:warn("\"" .. err .. "\" while attempting to send to " .. client_state.peername)
+                else
+                    log:info("user login by " .. user.uuid .. " from " .. client_state.peername)
+                end
             end
         else
             log:warn("incorrect login or password from " .. client_state.peername)
@@ -184,7 +195,7 @@ end
 local function on_new_client_io_event(loop, io, revents)
     local client_state = {}
     local client = state.tcp:accept()
-    local peername = client:getpeername()
+    local peername = uri("tcp", unpack{client:getpeername()})
     log:info("connection from unverified " .. peername)
     local client, err = ssl.wrap(client, config.authenticator.ssl_params)
     if err then
