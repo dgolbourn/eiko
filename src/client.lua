@@ -3,13 +3,15 @@ local ssl = require "ssl"
 local codec = require "eiko.codec"
 local data_model = require "eiko.data_model"
 local config = require "eiko.config"
-local log = require "eiko.logs".defaultLogger()
+local log = require "eiko.logs".client
 local zmq = require "lzmq"
 local ev = require "ev"
 local uri = require "eiko.uri"
 
 
 local state = {}
+
+count = 0
 
 local function connection_close(loop)
     log:info("closing connection")
@@ -60,7 +62,7 @@ local function on_server_io_event(loop, io, revents)
                 }
                 active_state.client:send(event)
             else
-                log:warn("\"" .. err .. "\" while receiving data from " .. active_state.udp_peername)
+                log:warn("\"" .. err .. "\" while receiving data from " .. active_state.tcp_peername)
                 connection_close(loop)
             end
         end
@@ -85,7 +87,7 @@ local function on_stream_io_event(loop, io, revents)
                 active_state.epoch = epoch
                 active_state.previous[epoch] = incoming_event
                 for past_epoch, _ in pairs(active_state.previous) do
-                    if active_state.epoch - past_epoch > config.event.message_history_depth then
+                    if active_state.epoch - past_epoch > config.client.message_history_depth then
                         active_state.previous[past_epoch] = nil
                     end
                 end
@@ -98,7 +100,7 @@ local function on_stream_io_event(loop, io, revents)
                         global = incoming_event.global,
                         user = incoming_event.user
                     }
-                    active_state.client:send(event)
+                    state.user:send(event)
                     local event = data_model.server_stream_response.encode{}
                     event = codec.encode(event, active_state.counter, active_state.epoch, active_state.traffic_key)
                     active_state.counter = active_state.counter + 1
@@ -115,7 +117,7 @@ local function on_stream_io_event(loop, io, revents)
     end
 end
 
-local function on_stream_authentication_io_event(peername, loop, io, revents)
+local function on_stream_authentication_io_event(loop, io, revents)
     local pending_state = state.pending_state
     if pending_state then
         local data, err, partial = pending_state.server:receive('*l', pending_state.buffer)
@@ -170,12 +172,12 @@ local function on_server_authorisation_io_event(loop, io, revents)
             log:warn("\"" .. err .. "\" when expecting authorisation of " .. pending_state.tcp_peername .. " with " .. pending_state.authenticator_peername)
             connection_close(loop)
         else
-            local incoming_event, err = data_model.authenticator_authorisation_response.decode(data)
+            local incoming_event, err = data_model.authenticator_authorise_response.decode(data)
             if incoming_event then
                 log:info("Received authorisation of " .. pending_state.tcp_peername .. " from " .. pending_state.authenticator_peername)
                 pending_state.authenticator:close()
                 pending_state.authenticator_io_watcher:stop(loop)
-                local event = data_model.client_authentication_reponse.encode{
+                local event = data_model.server_authentication_response.encode{
                     authentication_token = incoming_event.authentication_token
                 }
                 local _, err = pending_state.server:send(event)
@@ -404,7 +406,7 @@ local function on_user_idle_event(loop, idle, revents)
                     if err then
                         log:warn("\"" .. err .. "\" while attempting tls handshake with " .. tcp_peername)
                     else
-                        log:info("connecting to  " .. tcp_peername)
+                        log:info("connecting to " .. tcp_peername)
                         local pending_state = {}
                         pending_state.tcp_peername = tcp_peername
                         pending_state.server = server

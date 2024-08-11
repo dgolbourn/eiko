@@ -5,7 +5,7 @@ local ssl = require "ssl"
 local data_model = require "eiko.data_model"
 local codec = require "eiko.codec"
 local sodium = require "sodium"
-local log = require "eiko.logs".defaultLogger()
+local log = require "eiko.logs".authenticator
 local ev = require "ev"
 local uri = require "eiko.uri"
 
@@ -30,27 +30,38 @@ end
 
 local function authorise(client_state, incoming_event)
     local collection = state.mongo:getCollection("eiko", "user")
-    local query = mongo.BSON{user_authentication_token = incoming_event.user_authentication_token}
+    local query = mongo.BSON{user_authentication_token = mongo.Binary(incoming_event.user_authentication_token)}
     local user = collection:findOne(query)
     if user then
         user = user:value()
-        if os.clock() - user.user_authentication_now < config.authenticator.user_authentication_period then
+        local now = 1000 * os.time()
+        if now - user.user_authentication_now:unpack() < 1000 * config.authenticator.user_authentication_period then
             local query = mongo.BSON{_id = user._id}
             local client_authentication_token = codec.authentication_token()
-            local now = mongo.DateTime(os.clock())
-            collection:updateOne(query, {
-                server_authentication_token = user.server_authentication_token,
-                client_authentication_token = client_authentication_token,
-                client_authentication_now = now
-            })
-            local event = data_model.authenticator_authorise_response.encode{
-                authentication_token = client_authentication_token
-            }
-            local _, err = client_state.client:send(event)
+            local success, err = collection:update({_id = user._id},
+                {
+                    ["$set"] = {
+                        server_authentication_token = mongo.Binary(incoming_event.server_authentication_token),
+                        client_authentication_token = mongo.Binary(client_authentication_token),
+                        client_authentication_now = mongo.DateTime(now)
+                    }
+                },
+                {
+                    upsert=true
+                }
+            )
             if err then
-                log:warn("\"" .. err .. "\" while attempting to send to " .. client_state.peername)
+                log:warn("\"" .. err .. "\" while attempting to update database")
             else
-                log:info("user " .. user.uuid .. " authorised " .. client_state.peername)
+                local event = data_model.authenticator_authorise_response.encode{
+                    authentication_token = client_authentication_token
+                }
+                local _, err = client_state.client:send(event)
+                if err then
+                    log:warn("\"" .. err .. "\" while attempting to send to " .. client_state.peername)
+                else
+                    log:info("user " .. user.uuid .. " authorised " .. client_state.peername)
+                end
             end
         else
             log:warn("authentication token expired for " .. client_state.peername)
@@ -68,12 +79,12 @@ local function login(client_state, incoming_event)
         user = user:value()
         if sodium.crypto_pwhash_str_verify(user.hash, incoming_event.password) then
             local user_authentication_token = codec.authentication_token()
-            local now = mongo.DateTime(os.clock())
+            local now = 1000 * os.time()
             local success, err = collection:update({_id = user._id},
                 {
-                    set = {
-                        user_authentication_token = user_authentication_token,
-                        user_authentication_now = now
+                    ["$set"] = {
+                        user_authentication_token = mongo.Binary(user_authentication_token),
+                        user_authentication_now = mongo.DateTime(now)
                     }
                 },
                 {
@@ -106,13 +117,14 @@ end
 local function verify(client_state, incoming_event)
     local collection = state.mongo:getCollection("eiko", "user")
     local query = mongo.BSON{
-        server_authentication_token = incoming_event.server_authentication_token,
-        client_authentication_token = incoming_event.client_authentication_token
+        server_authentication_token = mongo.Binary(incoming_event.server_authentication_token),
+        client_authentication_token = mongo.Binary(incoming_event.client_authentication_token)
     }
     local user = collection:findOne(query)
     if user then
         user = user:value()
-        if os.clock() - user.client_authentication_now < config.authenticator.client_authentication_period then
+        local now = 1000 * os.time()
+        if now - user.client_authentication_now:unpack() < 1000 * config.authenticator.client_authentication_period then
             local event = data_model.authenticator_verify_response.encode{
                 uuid = user.uuid,
                 display_name = user.display_name
@@ -193,7 +205,6 @@ local function on_handshake_io_event(peername, loop, io, revents)
 end
 
 local function on_new_client_io_event(loop, io, revents)
-    local client_state = {}
     local client = state.tcp:accept()
     local peername = uri("tcp", unpack{client:getpeername()})
     log:info("connection from unverified " .. peername)
@@ -205,6 +216,7 @@ local function on_new_client_io_event(loop, io, revents)
         local io_event = function(loop, io, revents)
             on_handshake_io_event(peername, loop, io, revents)
         end
+        local client_state = {}
         client_state.client = client
         client_state.peername = peername
         client_state.client_io_watcher = ev.IO.new(io_event, client:getfd(), ev.READ)

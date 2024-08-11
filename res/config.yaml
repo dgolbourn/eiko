@@ -39,4 +39,5 @@ client:
     options: [all]
   timeout_period: 10
   authentication_period: 30
+  message_history_depth: 20  
   ipc: ipc://@client

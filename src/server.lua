@@ -2,7 +2,7 @@ local socket = require "socket"
 local ev = require "ev"
 local ssl = require "ssl"
 local config = require "eiko.config"
-local log = require "eiko.logs".defaultLogger()
+local log = require "eiko.logs".server
 local data_model = require "eiko.data_model"
 local codec = require "eiko.codec"
 local zmq = require "lzmq"
@@ -56,8 +56,7 @@ local function on_traffic_key_timeout_event(peername, loop, io, revents)
     end
 end
 
-local function verify(host, port, data)
-    local peername = uri("udp", host, port)
+local function verify(loop, peername, host, port, data)
     for _, pending in pairs(state.pending) do
         local incoming_event, _, _ = codec.decode(data, pending.traffic_key)
         local incoming_event, err = data_model.server_stream_authentication_response.decode(incoming_event)
@@ -66,7 +65,7 @@ local function verify(host, port, data)
         else
             local client_state = state.clients[pending.uuid]
             if client_state then
-                if incoming_event.authentication_token == client_state.authentication_token then
+                if incoming_event.authentication_token == pending.authentication_token then
                     log:info("authenticated " .. pending.uuid .. " at " .. peername)
                     state.pending[pending.uuid] = nil
                     client_state.traffic_key = pending.traffic_key
@@ -138,7 +137,7 @@ local function on_stream_io_event(loop, io, revents)
         decode(client_state, data)
     else
         log:debug("data received from unverified " .. peername)
-        verify(host, port, data)
+        verify(loop, peername, host, port, data)
     end
 end
 
@@ -180,8 +179,7 @@ local function on_verify_io_event(peername, loop, io, revents)
         else
             local incoming_event, err = data_model.authenticator_verify_response.decode(data)
             if incoming_event then
-                local authenticator_peername = config.authenticator.host .. ":" .. config.authenticator.port
-                log:info(authenticator_peername .. " verified authentication token as " .. incoming_event.uuid .. " at " .. peername)
+                log:info(client_state.authenticator_peername .. " verified authentication token as " .. incoming_event.uuid .. " at " .. peername)
                 client_state.authenticator:close()
                 client_state.authenticator_io_watcher:stop(loop)
                 client_state.uuid = incoming_event.uuid
@@ -222,9 +220,8 @@ local function on_authenticator_handshake_io_event(peername, loop, io, revents)
     local client_state = state.clients[peername]
     if client_state then
         local success, err = client_state.authenticator:dohandshake()
-        local authenticator_peername = config.authenticator.host .. ":" .. config.authenticator.port
         if success then
-            log:info("successful tls handshake with " .. authenticator_peername)
+            log:info("successful tls handshake with " .. client_state.authenticator_peername)
             local io_event = function(loop, io, revents)
                 on_verify_io_event(peername, loop, io, revents)
             end
@@ -238,11 +235,11 @@ local function on_authenticator_handshake_io_event(peername, loop, io, revents)
                 log:warn("\"" .. err .. "\" while attempting authentication of " .. peername)
                 client_state_close(client_state, loop)
             else
-                log:info("sent verification request to " .. authenticator_peername .. " for " .. peername)
+                log:info("sent verification request to " .. client_state.authenticator_peername .. " for " .. peername)
             end
         elseif err == "timeout" or err == "wantread" or err == "wantwrite" then
         else
-            log:warn("\"" .. err .. "\" while attempting tls handshake with " .. authenticator_peername)
+            log:warn("\"" .. err .. "\" while attempting tls handshake with " .. client_state.authenticator_peername)
             client_state_close(client_state, loop)
         end
     else
@@ -266,9 +263,9 @@ local function on_authentication_io_event(peername, loop, io, revents)
                 log:info("verifying " .. peername)
                 local authenticator = socket.tcp()
                 authenticator:connect(config.authenticator.host, config.authenticator.port)
-                local authenticator, err = ssl.wrap(authenticator, config.authenticator.ssl_params)
+                local authenticator_peername = uri("tcp", unpack{authenticator:getpeername()})
+                local authenticator, err = ssl.wrap(authenticator, config.client.ssl_params)
                 if err then
-                    local authenticator_peername = config.authenticator.host .. ":" .. config.authenticator.port
                     log:warn("\"" .. err .. "\" while attempting tls handshake with " .. authenticator_peername)
                     client_state_close(client_state, loop)
                 else
@@ -276,6 +273,7 @@ local function on_authentication_io_event(peername, loop, io, revents)
                     local io_event = function(loop, io, revents)
                         on_authenticator_handshake_io_event(peername, loop, io, revents)
                     end
+                    client_state.authenticator_peername = authenticator_peername
                     client_state.client_authentication_token = incoming_event.authentication_token
                     client_state.authenticator = authenticator
                     client_state.authenticator_io_watcher = ev.IO.new(io_event, authenticator:getfd(), ev.READ)
@@ -365,7 +363,7 @@ local function on_game_idle_event(loop, idle, revents)
                         end
                     end
                 elseif data_model.game_stream_request.kindof(incoming_event) then
-                    for uuid, user in incoming_event.user do
+                    for uuid, user in pairs(incoming_event.user) do
                         local client_state = state.clients[uuid]
                         if client_state and client_state.traffic_key then
                             local event = data_model.server_stream_request.encode{
@@ -386,8 +384,7 @@ local function on_game_idle_event(loop, idle, revents)
                                 end
                             end
                             local encoded_message = codec.delta_compress_encode(event, client_state.epoch, previous, previous_epoch, client_state.traffic_key)
-                            state.udp:sendto(encoded_message, client_state.host, client_state.port)
-                            local _, err = client_state.client:send(event)
+                            local _, err = state.udp:sendto(encoded_message, client_state.host, client_state.port)
                             if err then
                                 log:warn("\"" .. err .. "\" while attempting to send to " .. uuid)
                                 client_state_close(client_state, loop)
