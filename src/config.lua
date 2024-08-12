@@ -1,7 +1,14 @@
 local lyaml = require "lyaml"
-local f = assert(io.open("res/config.yaml", "rb"))
-local data = f:read("*all")
-local config = lyaml.load(data)
-f:close()
 
-return config
+
+local function load(path)
+    local file = assert(io.open(path, "rb"))
+    local data = file:read("*all")
+    local config = lyaml.load(data)
+    file:close()
+    return config
+end
+
+return {
+    load = load
+}

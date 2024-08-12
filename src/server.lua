@@ -58,10 +58,12 @@ local function new(config)
 
     local function verify(loop, peername, host, port, data)
         for _, pending in pairs(state.pending) do
-            local incoming_event, _, _ = codec.decode(data, pending.traffic_key)
-            local incoming_event, err = data_model.server_stream_authentication_response.decode(incoming_event)
+            local incoming_event, err, _ = codec.decode(data, pending.traffic_key)
+            if incoming_event then
+                incoming_event, err = data_model.server_stream_authentication_response.decode(incoming_event)
+            end
             if err then
-                log:debug("unable to authenticate data as " .. pending.uuid .. " at unverified " .. peername)
+                log:debug("'" .. err .. "' unable to authenticate data as " .. pending.uuid .. " at unverified " .. peername)
             else
                 local client_state = state.clients[pending.uuid]
                 if client_state then
@@ -80,7 +82,7 @@ local function new(config)
                         local timer_event = function(loop, io, revents)
                             on_traffic_key_timeout_event(peername, loop, io, revents)
                         end
-                        client_state.timer_watcher = ev.Timer.new(timer_event, config.server.traffic_key_period, 0)
+                        client_state.timer_watcher = ev.Timer.new(timer_event, config.traffic_key_period, 0)
                         client_state.timer_watcher:start(loop)
                         state.clients[peername] = client_state
                         return
@@ -264,7 +266,7 @@ local function new(config)
                     local authenticator = socket.tcp()
                     authenticator:connect(config.authenticator.host, config.authenticator.port)
                     local authenticator_peername = uri("tcp", unpack{authenticator:getpeername()})
-                    local authenticator, err = ssl.wrap(authenticator, config.client.ssl_params)
+                    local authenticator, err = ssl.wrap(authenticator, config.authenticator.ssl)
                     if err then
                         log:warn("\"" .. err .. "\" while attempting tls handshake with " .. authenticator_peername)
                         client_state_close(client_state, loop)
@@ -342,10 +344,10 @@ local function new(config)
             if incoming_event then
                 local incoming_event, err = data_model.game_request.decode(incoming_event)
                 if err then
-                    log:error("\"" .. err .. "\" when decoding data from " .. config.server.ipc)
+                    log:error("\"" .. err .. "\" when decoding data from " .. config.ipc)
                 else
                     if data_model.game_state_request.kindof(incoming_event) then
-                        for uuid, user in incoming_event.user do
+                        for uuid, user in pairs(incoming_event.user) do
                             local client_state = state.clients[uuid]
                             if client_state then
                                 local event = data_model.server_state_request.encode{
@@ -379,7 +381,7 @@ local function new(config)
                                     previous_epoch = 0
                                 end
                                 for past_epoch, _ in pairs(client_state.history) do
-                                    if client_state.epoch - past_epoch > config.server.message_history_depth then
+                                    if client_state.epoch - past_epoch > config.message_history_depth then
                                         client_state.history[past_epoch] = nil
                                     end
                                 end
@@ -400,7 +402,7 @@ local function new(config)
                 end
             elseif err:no() == zmq.errors.EAGAIN then
             else
-                log:error("\"" .. err:msg() .. "\" when decoding data from " .. config.server.ipc)
+                log:error("\"" .. err:msg() .. "\" when decoding data from " .. config.ipc)
             end
         else
             state.game_idle_watcher:stop(loop)
@@ -412,7 +414,7 @@ local function new(config)
         local client = state.tcp:accept()
         local peername = uri("tcp", unpack{client:getpeername()})
         log:info("connection from unverified " .. peername)
-        local client, err = ssl.wrap(client, config.server.ssl_params)
+        local client, err = ssl.wrap(client, config.ssl)
         if err then
             log:warn("\"" .. err .. "\" while attempting tls handshake with " .. peername)
         else
@@ -428,7 +430,7 @@ local function new(config)
             local timer_event = function(loop, io, revents)
                 on_authentication_timeout_event(peername, loop, io, revents)
             end
-            client_state.timer_watcher = ev.Timer.new(timer_event, config.server.authentication_period, 0)
+            client_state.timer_watcher = ev.Timer.new(timer_event, config.authentication_period, 0)
             client_state.timer_watcher:start(loop)
             state.clients[peername] = client_state
         end
@@ -439,20 +441,20 @@ local function new(config)
         loop = loop or ev.Loop.default
         state = {}
         state.tcp = socket.tcp()
-        state.tcp:bind(config.server.host, config.server.port)
-        state.tcp:listen(config.server.max_clients)
+        state.tcp:bind(config.host, config.port)
+        state.tcp:listen(config.max_clients)
         state.tcp:settimeout(0)
         state.new_client_io_watcher = ev.IO.new(on_new_client_io_event, state.tcp:getfd(), ev.READ)
         state.new_client_io_watcher:start(loop)
         state.ipc_context = zmq.context{io_threads = 1}
-        state.game = state.ipc_context:socket{zmq.PAIR, bind = config.server.ipc}
+        state.game = state.ipc_context:socket{zmq.PAIR, bind = config.ipc}
         state.game_io_watcher = ev.IO.new(on_game_io_event, state.game:get_fd(), ev.READ)
         state.game_idle_watcher = ev.Idle.new(on_game_idle_event)
         state.game_io_watcher:start(loop)
         state.clients = {}
         state.udp = socket.udp()
         state.udp:settimeout(0)
-        state.udp:setsockname(config.server.host, config.server.port)
+        state.udp:setsockname(config.host, config.port)
         state.stream_io_watcher = ev.IO.new(on_stream_io_event, state.udp:getfd(), ev.READ)
         state.stream_io_watcher:start(loop)
         state.pending = {}

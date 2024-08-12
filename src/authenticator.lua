@@ -34,7 +34,7 @@ local function new(config)
         if user then
             user = user:value()
             local now = 1000 * os.time()
-            if now - user.user_authentication_now:unpack() < 1000 * config.authenticator.user_authentication_period then
+            if now - user.user_authentication_now:unpack() < 1000 * config.user_authentication_period then
                 local query = mongo.BSON{_id = user._id}
                 local client_authentication_token = codec.authentication_token()
                 local success, err = collection:update({_id = user._id},
@@ -123,7 +123,7 @@ local function new(config)
         if user then
             user = user:value()
             local now = 1000 * os.time()
-            if now - user.client_authentication_now:unpack() < 1000 * config.authenticator.client_authentication_period then
+            if now - user.client_authentication_now:unpack() < 1000 * config.client_authentication_period then
                 local event = data_model.authenticator_verify_response.encode{
                     uuid = user.uuid,
                     display_name = user.display_name
@@ -207,7 +207,7 @@ local function new(config)
         local client = state.tcp:accept()
         local peername = uri("tcp", unpack{client:getpeername()})
         log:info("connection from unverified " .. peername)
-        local client, err = ssl.wrap(client, config.authenticator.ssl_params)
+        local client, err = ssl.wrap(client, config.ssl)
         if err then
             log:warn("\"" .. err .. "\" while attempting tls handshake with " .. peername)
         else
@@ -223,7 +223,7 @@ local function new(config)
             local timer_event = function(loop, io, revents)
                 on_client_timeout_event(peername, loop, io, revents)
             end
-            client_state.timer_watcher = ev.Timer.new(timer_event, config.authenticator.timeout_period, 0)
+            client_state.timer_watcher = ev.Timer.new(timer_event, config.timeout_period, 0)
             client_state.timer_watcher:start(loop)
             state.clients[peername] = client_state
         end
@@ -234,13 +234,13 @@ local function new(config)
         loop = loop or ev.Loop.default
         state = {}
         state.tcp = socket.tcp()
-        state.tcp:bind(config.authenticator.host, config.authenticator.port)
-        state.tcp:listen(config.authenticator.max_clients)
+        state.tcp:bind(config.host, config.port)
+        state.tcp:listen(config.max_clients)
         state.tcp:settimeout(0)
         state.new_client_io_watcher = ev.IO.new(on_new_client_io_event, state.tcp:getfd(), ev.READ)
         state.new_client_io_watcher:start(loop)
         state.clients = {}
-        state.mongo = mongo.Client(config.authenticator.db)
+        state.mongo = mongo.Client(config.db)
     end
 
     local function stop(loop)

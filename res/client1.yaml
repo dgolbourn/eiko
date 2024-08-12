@@ -1,0 +1,13 @@
+---
+ssl:
+  mode: client
+  protocol: any
+  verify: none
+  options: [all]
+timeout_period: 10
+authentication_period: 30
+message_history_depth: 20  
+ipc: ipc://@client1
+authenticator:
+  host: localhost
+  port: 21099

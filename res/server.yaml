@@ -1,0 +1,23 @@
+---
+ssl:
+  mode: server
+  protocol: tlsv1_2
+  key: test/ca-key.pem
+  certificate: test/ca-cert.pem
+  verify: none
+  options: [all]
+max_clients: 16
+host: localhost
+port: 21098
+authentication_period: 30
+message_history_depth: 20
+traffic_key_period: 86400
+ipc: ipc://@server
+authenticator:
+  ssl:
+    mode: client
+    protocol: any
+    verify: none
+    options: [all]
+  host: localhost
+  port: 21099

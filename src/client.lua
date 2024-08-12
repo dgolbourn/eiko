@@ -57,7 +57,7 @@ local function new(config)
                         global = incoming_event.global,
                         user = incoming_event.user
                     }
-                    active_state.client:send(event)
+                    state.user:send(event)
                 else
                     log:warn("\"" .. err .. "\" while receiving data from " .. active_state.tcp_peername)
                     connection_close(loop)
@@ -84,7 +84,7 @@ local function new(config)
                     active_state.epoch = epoch
                     active_state.previous[epoch] = incoming_event
                     for past_epoch, _ in pairs(active_state.previous) do
-                        if active_state.epoch - past_epoch > config.client.message_history_depth then
+                        if active_state.epoch - past_epoch > config.message_history_depth then
                             active_state.previous[past_epoch] = nil
                         end
                     end
@@ -239,7 +239,7 @@ local function new(config)
                     local authenticator = socket.tcp()
                     authenticator:connect(config.authenticator.host, config.authenticator.port)
                     local authenticator_peername = uri("tcp", unpack{authenticator:getpeername()})
-                    local authenticator, err = ssl.wrap(authenticator, config.client.ssl_params)
+                    local authenticator, err = ssl.wrap(authenticator, config.ssl)
                     if err then
                         log:warn("\"" .. err .. "\" while attempting tls handshake with " .. authenticator_peername)
                         connection_close(loop)
@@ -364,7 +364,7 @@ local function new(config)
                 if state.active_state then
                     local incoming_event, err = data_model.client_response.decode(incoming_event)
                     if err then
-                        log:error("\"" .. err .. "\" when decoding data from " .. config.client.ipc)
+                        log:error("\"" .. err .. "\" when decoding data from " .. config.ipc)
                     else
                         local active_state = state.active_state
                         if data_model.client_state_response.kindof(incoming_event) then
@@ -388,18 +388,18 @@ local function new(config)
                                 connection_close(loop)
                             end
                         else
-                            log:error("unimplemented " .. incoming_event._kind .. " received from " .. config.client.ipc)
+                            log:error("unimplemented " .. incoming_event._kind .. " received from " .. config.ipc)
                         end
                     end
                 elseif state.authentication_token then
                     local incoming_event, err = data_model.user_connection_request.decode(incoming_event)
                     if err then
-                        log:error("\"" .. err .. "\" when decoding data from " .. config.client.ipc)
+                        log:error("\"" .. err .. "\" when decoding data from " .. config.ipc)
                     else
                         local server = socket.tcp()
                         server:connect(incoming_event.host, incoming_event.port)
                         local tcp_peername = uri("tcp", unpack{server:getpeername()})
-                        local server, err = ssl.wrap(server, config.client.ssl_params)
+                        local server, err = ssl.wrap(server, config.ssl)
                         if err then
                             log:warn("\"" .. err .. "\" while attempting tls handshake with " .. tcp_peername)
                         else
@@ -407,7 +407,7 @@ local function new(config)
                             local pending_state = {}
                             pending_state.tcp_peername = tcp_peername
                             pending_state.server = server
-                            pending_state.timer_watcher = ev.Timer.new(on_authentication_timeout_event, config.client.authentication_period, 0)
+                            pending_state.timer_watcher = ev.Timer.new(on_authentication_timeout_event, config.authentication_period, 0)
                             pending_state.timer_watcher:start(loop)
                             pending_state.server:settimeout(0)
                             pending_state.stream = socket.udp()
@@ -425,13 +425,13 @@ local function new(config)
                 else
                     local incoming_event, err = data_model.user_login_request.decode(incoming_event)
                     if err then
-                        log:error("\"" .. err .. "\" when decoding data from " .. config.client.ipc)
+                        log:error("\"" .. err .. "\" when decoding data from " .. config.ipc)
                     else
                         log:info("attempting login as " .. incoming_event.login)
                         local authenticator = socket.tcp()
                         authenticator:connect(config.authenticator.host, config.authenticator.port)
                         local authenticator_peername = uri("tcp", unpack{authenticator:getpeername()})
-                        local authenticator, err = ssl.wrap(authenticator, config.client.ssl_params)
+                        local authenticator, err = ssl.wrap(authenticator, config.ssl)
                         if err then
                             log:warn("\"" .. err .. "\" while attempting tls handshake with " .. authenticator_peername)
                             connection_close(loop)
@@ -444,7 +444,7 @@ local function new(config)
                             login_state.authenticator = authenticator
                             login_state.authenticator_io_watcher = ev.IO.new(on_login_handshake_io_event, authenticator:getfd(), ev.READ)
                             login_state.authenticator_io_watcher:start(loop)
-                            login_state.timer_watcher = ev.Timer.new(on_login_timeout_event, config.client.timeout_period, 0)
+                            login_state.timer_watcher = ev.Timer.new(on_login_timeout_event, config.timeout_period, 0)
                             login_state.timer_watcher:start(loop)
                             state.login_state = login_state
                             on_login_handshake_io_event(loop, io, revents)
@@ -453,7 +453,7 @@ local function new(config)
                 end
             elseif err:no() == zmq.errors.EAGAIN then
             else
-                log:error("\"" .. err:msg() .. "\" when decoding data from " .. config.client.ipc)
+                log:error("\"" .. err:msg() .. "\" when decoding data from " .. config.ipc)
             end
         else
             state.user_idle_watcher:stop(loop)
@@ -467,7 +467,7 @@ local function new(config)
         state = {}
         state.ipc_context = zmq.context{io_threads = 1}
         state.user = state.ipc_context:socket{zmq.PAIR,
-            bind = config.client.ipc
+            bind = config.ipc
         }
         state.user_io_watcher = ev.IO.new(on_user_io_event, state.user:get_fd(), ev.READ)
         state.user_idle_watcher = ev.Idle.new(on_user_idle_event)
