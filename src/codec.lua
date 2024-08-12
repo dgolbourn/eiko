@@ -43,12 +43,16 @@ end
 local function decode(noncesecret, key)
     local nonce = string.sub(noncesecret, 1, sodium.crypto_secretbox_NONCEBYTES)
     local secret = string.sub(noncesecret, sodium.crypto_secretbox_NONCEBYTES + 1, -1)
-    local epochscompressed = sodium.crypto_secretbox_open_easy(secret, nonce, key)
-    local epoch = tonumber(string.sub(epochscompressed, 1, 16), 16)
-    local counter = tonumber(string.sub(epochscompressed, 17, 32), 16)
-    local compressed = string.sub(epochscompressed, 33, -1)
-    local message = snappy.uncompress(compressed)
-    return message, counter, epoch
+    local epochscompressed, err = sodium.crypto_secretbox_open_easy(secret, nonce, key)
+    if epochscompressed then
+        local epoch = tonumber(string.sub(epochscompressed, 1, 16), 16)
+        local counter = tonumber(string.sub(epochscompressed, 17, 32), 16)
+        local compressed = string.sub(epochscompressed, 33, -1)
+        local message = snappy.uncompress(compressed)
+        return message, counter, epoch
+    else
+        return nil, err
+    end
 end
 
 local authentication_key = sodium.crypto_auth_keygen()
