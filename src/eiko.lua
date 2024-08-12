@@ -1,13 +1,14 @@
 local ev = require "ev"
 local signal = require "signal"
+local config = require "eiko.config"
 
-local server = require "eiko.server"
+local server = require "eiko.server".new(config)
 server.start(ev.Loop.default)
 
-local authenticator = require "eiko.authenticator"
+local authenticator = require "eiko.authenticator".new(config)
 authenticator.start(ev.Loop.default)
 
-local client = require "eiko.client"
+local client = require "eiko.client".new(config)
 client.start(ev.Loop.default)
 
 local function on_sigint_event(loop, sig, revents)
@@ -41,7 +42,7 @@ local function on_timer_event(loop, timer, revents)
         global = {
         },
         user = {
-            ["4e0d5f13-43b3-42cc-a881-eeabfafd72dd"] = {counter = counter}
+            ["0068388e-2c0d-4eaf-a159-8f0bf99a3521"] = {counter = counter}
         }
     }
     counter = counter + 1
