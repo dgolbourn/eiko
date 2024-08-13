@@ -74,11 +74,11 @@ jobs:
           pacboy: >-
             toolchain:p
             cmake:p
-            ninja:p                
+            ninja:p                           
       - uses: leafo/gh-actions-lua@v10
         with:
           luaVersion: luajit
-      - uses: leafo/gh-actions-luarocks@v4
+      - uses: hishamhm/gh-actions-luarocks@master
       - name: Dependencies
         run: xargs sudo pacman --noconfirm -S < .devcontainer/scripts/packages.txt
       - name: Build
