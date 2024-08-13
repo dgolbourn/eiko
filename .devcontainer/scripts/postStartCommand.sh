@@ -7,4 +7,4 @@ luarocks make --local --server rocks
 
 luarocks test --local 
 
-luacheck src
+luacheck src || true

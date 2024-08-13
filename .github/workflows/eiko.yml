@@ -31,12 +31,56 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        
       - uses: leafo/gh-actions-lua@v10
         with:
           luaVersion: luajit
       - uses: leafo/gh-actions-luarocks@v4
       - name: Dependencies
         run: sudo apt update -y && xargs sudo apt install -y < .devcontainer/scripts/packages.txt
+      - name: Build
+        run: luarocks make --server rocks
+      - name: Test
+        run:  luarocks test
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: success() || failure() 
+        with:
+          name: Lua tests
+          path: reports/*.xml
+          reporter: java-junit
+  release-windows:
+    needs:
+      - rock
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: mingw64
+          update: true
+          install: >-
+            git
+            make
+          pacboy: >-
+            toolchain:p
+            cmake:p
+            ninja:p                
+      - uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: luajit
+      - uses: leafo/gh-actions-luarocks@v4
+      - name: Dependencies
+        run: xargs sudo pacman --noconfirm -S < .devcontainer/scripts/packages.txt
       - name: Build
         run: luarocks make --server rocks
       - name: Test

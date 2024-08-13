@@ -57,9 +57,7 @@ local function on_timer_event(loop, timer, revents)
             ["75a4892b-db30-415c-9758-b06043e4b3a5"] = {data = "user3", counter = counter}
         }
     }
-    counter = counter + 1
     game:send(event)
-
     local event = data_model.game_state_request.encode{
         global = {
             counter = counter
@@ -71,6 +69,8 @@ local function on_timer_event(loop, timer, revents)
         }
     }
     game:send(event)
+    counter = counter + 1
+    --print(counter)    
 end
 
 local timer_watcher = ev.Timer.new(on_timer_event, 2, 0.05)
@@ -86,7 +86,7 @@ local function client1_stream_request(loop, idle, revents)
     if user1:has_event(zmq.POLLIN) then
         local incoming_event, err = user1:recv(zmq.NOBLOCK)
         if incoming_event then
-            print("user 1", incoming_event)
+            --print("user 1", incoming_event)
         end
     end
 end
@@ -128,7 +128,7 @@ local function client2_stream_request(loop, idle, revents)
     if user2:has_event(zmq.POLLIN) then
         local incoming_event, err = user2:recv(zmq.NOBLOCK)
         if incoming_event then
-            print("user 2", incoming_event)
+            --print("user 2", incoming_event)
         end
     end
 end
@@ -171,7 +171,7 @@ local function client3_stream_request(loop, idle, revents)
     if user3:has_event(zmq.POLLIN) then
         local incoming_event, err = user3:recv(zmq.NOBLOCK)
         if incoming_event then
-            print("user 3", incoming_event)
+            --print("user 3", incoming_event)
         end
     end
 end
