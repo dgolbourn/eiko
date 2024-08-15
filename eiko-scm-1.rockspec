@@ -12,22 +12,17 @@ dependencies = {
    "lua-resty-snappy",
    "diff_match_patch",
    "lua-cjson",
-   "lua-ev",
    "jsonschema",
    "lualogging",
    "ansicolors",
    "lyaml",
-   "lua_signal",
    "luafilesystem",
-   "lzmq",
-   "lua-mongo",
-   "lua_uuid"
+   "lua-mongo"
 }
 description = {}
 build = {
    type = "builtin",
    modules = {
-      eiko = "src/eiko.lua",
       ["eiko.codec"] = "src/codec.lua",
       ["eiko.server"] = "src/server.lua",
       ["eiko.client"] = "src/client.lua",
@@ -36,12 +31,14 @@ build = {
       ["eiko.logs"] = "src/logs.lua",
       ["eiko.config"] = "src/config.lua",
       ["eiko.uri"] = "src/uri.lua",
+      ["eiko.event"] = "src/event.lua",
    },
    copy_directories = {"res"}
 }
 test_dependencies = {
    "luaunit",
-   "luacheck"
+   "luacheck",
+   "uuid"
 }
 test = {
    type = "command",
