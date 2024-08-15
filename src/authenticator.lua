@@ -5,22 +5,21 @@ local data_model = require "eiko.data_model"
 local codec = require "eiko.codec"
 local sodium = require "sodium"
 local log = require "eiko.logs".authenticator
-local ev = require "ev"
 local uri = require "eiko.uri"
 
 
 local function new(config)
     local state = nil
-        
-    local function client_state_close(client_state, loop)
+
+    local function client_state_close(client_state)
         if client_state.client then
             client_state.client:close()
         end
         if client_state.client_io_watcher then
-            client_state.client_io_watcher:stop(loop)
+            client_state.client_io_watcher.stop()
         end
         if client_state.timer_watcher then
-            client_state.timer_watcher:stop(loop)
+            client_state.timer_watcher.stop()
         end
         if client_state.peername then
             state.clients[client_state.peername] = nil
@@ -142,7 +141,7 @@ local function new(config)
         end
     end
 
-    local function on_client_io_event(peername, loop, io, revents)
+    local function on_client_io_event(peername)
         local client_state = state.clients[peername]
         if client_state then
             local data, err, partial = client_state.client:receive('*l', client_state.buffer)
@@ -162,48 +161,48 @@ local function new(config)
                 else
                     log:warn("\"" .. err .. "\" when decoding data from " .. peername)
                 end
-                client_state_close(client_state, loop)
+                client_state_close(client_state)
             elseif err == "timeout" then
             else
                 log:warn("\"" .. err .. "\" while receiving from " .. peername)
-                client_state_close(client_state, loop)
+                client_state_close(client_state)
             end
         else
             log:warn("no connection with " .. peername)
         end
     end
 
-    local function on_client_timeout_event(peername, loop, io, revents)
+    local function on_client_timeout_event(peername)
         local client_state = state.clients[peername]
         if client_state then
             log:warn("timeout period has elapsed for " .. peername)
-            client_state_close(client_state, loop)
+            client_state_close(client_state)
         else
             log:warn("no connection with " .. peername)
         end
     end
 
-    local function on_handshake_io_event(peername, loop, io, revents)
+    local function on_handshake_io_event(peername)
         local client_state = state.clients[peername]
         if client_state then
             local success, err = client_state.client:dohandshake()
             if success then
                 log:info("successful tls handshake with " .. peername)
-                local io_event = function(loop, io, revents)
-                    on_client_io_event(peername, loop, io, revents)
+                local io_event = function()
+                    on_client_io_event(peername)
                 end
-                client_state.client_io_watcher:callback(io_event)
+                client_state.client_io_watcher.callback(io_event)
             elseif err == "timeout" or err == "wantread" or err == "wantwrite" then
             else
                 log:warn("\"" .. err .. "\" while attempting tls handshake with " .. peername)
-                client_state_close(client_state, loop)
+                client_state_close(client_state)
             end
         else
             log:warn("no pending connection with " .. peername)
         end
     end
 
-    local function on_new_client_io_event(loop, io, revents)
+    local function on_new_client_io_event()
         local client = state.tcp:accept()
         local peername = uri("tcp", unpack{client:getpeername()})
         log:info("connection from unverified " .. peername)
@@ -212,45 +211,44 @@ local function new(config)
             log:warn("\"" .. err .. "\" while attempting tls handshake with " .. peername)
         else
             client:settimeout(0)
-            local io_event = function(loop, io, revents)
-                on_handshake_io_event(peername, loop, io, revents)
+            local io_event = function()
+                on_handshake_io_event(peername)
             end
             local client_state = {}
             client_state.client = client
             client_state.peername = peername
-            client_state.client_io_watcher = ev.IO.new(io_event, client:getfd(), ev.READ)
-            client_state.client_io_watcher:start(loop)
-            local timer_event = function(loop, io, revents)
-                on_client_timeout_event(peername, loop, io, revents)
+            client_state.client_io_watcher = state.event.receiver(client, io_event)
+            client_state.client_io_watcher.start()
+            local timer_event = function()
+                on_client_timeout_event(peername)
             end
-            client_state.timer_watcher = ev.Timer.new(timer_event, config.timeout_period, 0)
-            client_state.timer_watcher:start(loop)
+            client_state.timer_watcher = state.event.timer(config.timeout_period, timer_event)
+            client_state.timer_watcher.start()
             state.clients[peername] = client_state
         end
     end
 
-    local function start(loop)
+    local function start(event)
         log:info("starting authenticator")
-        loop = loop or ev.Loop.default
         state = {}
+        state.event = event
         state.tcp = socket.tcp()
         state.tcp:bind(config.host, config.port)
         state.tcp:listen(config.max_clients)
         state.tcp:settimeout(0)
-        state.new_client_io_watcher = ev.IO.new(on_new_client_io_event, state.tcp:getfd(), ev.READ)
-        state.new_client_io_watcher:start(loop)
+        state.new_client_io_watcher = event.receiver(state.tcp, on_new_client_io_event)
+        state.new_client_io_watcher.start()
         state.clients = {}
         state.mongo = mongo.Client(config.db)
     end
 
-    local function stop(loop)
+    local function stop()
         log:info("stopping authenticator")
-        loop = loop or ev.Loop.default
         for _, client_state in pairs(state.clients) do
-            client_state_close(client_state, loop)
+            client_state_close(client_state)
         end
         if state.new_client_io_watcher then
-            state.new_client_io_watcher:stop(loop)
+            state.new_client_io_watcher.stop()
         end
         if state.tcp then
             state.tcp:close()

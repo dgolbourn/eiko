@@ -24,7 +24,7 @@ local function delta_compress_decode(noncesecret, previous_map, key)
     local text = string.sub(epochstext, 33, -1)
     local new_epoch = tonumber(string.sub(epochstext, 1, 16), 16)
     local previous_epoch = tonumber(string.sub(epochstext, 17, 32), 16)
-    local previous = previous_map[previous_epoch]        
+    local previous = previous_map[previous_epoch]
     local patches = dmp.patch_fromText(text)
     local new = dmp.patch_apply(patches, previous)
     return new, new_epoch
