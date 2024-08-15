@@ -3,7 +3,6 @@ local lu = require "luaunit"
 Test = {}
 
 function Test:test_diff_match_patch()
-    bit32 = require "bit32"
     local dmp = require "diff_match_patch"
     local text1 = "asdsfsdfsdfsdfsdgdgsdgsdgsdgasgsd the quick brown fox jumped over the lazy dog"
     local text2 = "asdsfsdfsdfsdfsdgdgsdgsdgsdgasgsd the lazy dog did not jump over the quick brown fox"
