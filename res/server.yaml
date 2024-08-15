@@ -12,7 +12,13 @@ port: 21098
 authentication_period: 30
 message_history_depth: 20
 traffic_key_period: 86400
-ipc: ipc://@server
+ipc:
+  outgoing:
+    host: localhost
+    port: 21100
+  incoming:
+    host: localhost
+    port: 21101
 authenticator:
   ssl:
     mode: client

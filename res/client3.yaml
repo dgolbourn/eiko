@@ -6,8 +6,14 @@ ssl:
   options: [all]
 timeout_period: 10
 authentication_period: 30
-message_history_depth: 20  
-ipc: ipc://@client3
+message_history_depth: 20
+ipc:
+  outgoing:
+    host: localhost
+    port: 21106
+  incoming:
+    host: localhost
+    port: 21107
 authenticator:
   host: localhost
   port: 21099
