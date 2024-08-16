@@ -1,11 +1,11 @@
-local yaml = require "yaml"
+local yaml = require "tinyyaml"
 
 
 local function load(path)
     local file = assert(io.open(path, "rb"))
     local data = file:read("*all")
-    local config = yaml.eval(data)
     file:close()
+    local config = yaml.parse(data)
     return config
 end
 
