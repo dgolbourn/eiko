@@ -2,6 +2,5 @@ libssl-dev
 libsodium-dev
 libsnappy-dev
 libpcre3-dev
-libyaml-dev
 libmongoc-dev
 libbson-dev
