@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 pacman --noconfirm -Syuu
 UCRT=ucrt64/mingw-w64-ucrt-x86_64-
 pacman --noconfirm -S ${UCRT}toolchain libtool automake autoconf-wrapper make git
@@ -9,7 +9,7 @@ ln -s /ucrt64/include/luajit-2.1 /ucrt64/include/lua5.1
 
 pacman --noconfirm -S ${UCRT}openssl ${UCRT}libsodium ${UCRT}snappy ${UCRT}pcre
 
-luarocks --lua-version 5.1 make mingw-w64-ucrt-x86_64/eiko-win-1.rockspec --local PCRE_DIR=/usr --server rocks
+luarocks --lua-version 5.1 make mingw-w64-ucrt-x86_64/eiko-win-1.rockspec --local --server rocks PCRE_DIR=/ucrt64 
 
 cp /ucrt64/bin/luajit.exe ~/.luarocks/bin
 cp /ucrt64/bin/lua51.dll ~/.luarocks/bin
@@ -27,6 +27,7 @@ cp /ucrt64/bin/libpcre16-0.dll ~/.luarocks/bin
 cp /ucrt64/bin/libpcre32-0.dll ~/.luarocks/bin
 cp /ucrt64/bin/libpcrecpp-0.dll ~/.luarocks/bin
 cp /ucrt64/bin/libpcreposix-0.dll ~/.luarocks/bin
+cp /ucrt64/bin/libwinpthread-1.dll ~/.luarocks/bin
 
 mv ~/.luarocks/bin/libsodium-26.dll ~/.luarocks/bin/sodium.dll
 
