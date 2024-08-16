@@ -15,7 +15,7 @@ dependencies = {
    "jsonschema",
    "lualogging",
    "ansicolors",
-   "lyaml",
+   "lua-yaml",
    "luafilesystem",
    "lua-mongo"
 }

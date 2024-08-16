@@ -15,7 +15,7 @@ local function event()
         while state._loop do
             local socks = {}
             for sock, _ in pairs(state.receiver_watchers) do
-            table.insert(socks, sock)
+                table.insert(socks, sock)
             end
             local canread = socket.select(socks, nil, 1)
             for _, sock in ipairs(canread) do
@@ -24,8 +24,8 @@ local function event()
             local now = os.time()
             for _, timer in pairs(state.timer_watchers) do
                 if timer.now <= now then
-                    timer._callback()
                     timer.stop()
+                    timer._callback()
                 end
             end
         end
