@@ -11,17 +11,17 @@ pacman --noconfirm -S ${UCRT}openssl ${UCRT}libsodium ${UCRT}snappy ${UCRT}pcre
 
 luarocks --lua-version 5.1 make mingw-w64-ucrt-x86_64/eiko-win-1.rockspec --local PCRE_DIR=/usr
 
-cp libatomic-1.dll ~/.luarocks/bin
-cp libcrypto-3-x64.dll ~/.luarocks/bin
-cp libgcc_s_seh-1.dll ~/.luarocks/bin
-cp libgomp-1.dll ~/.luarocks/bin
-cp libquadmath-0.dll ~/.luarocks/bin
-cp libsnappy.dll ~/.luarocks/bin
-cp libssl-3-x64.dll ~/.luarocks/bin
-cp libstdc++-6.dll ~/.luarocks/bin
-cp libsodium-26.dll ~/.luarocks/bin/sodium.dll
-cp libpcre-1.dll ~/.luarocks/bin
-cp libpcre16-0.dll ~/.luarocks/bin
-cp libpcre32-0.dll ~/.luarocks/bin
-cp libpcrecpp-0.dll ~/.luarocks/bin
-cp libpcreposix-0.dll ~/.luarocks/bin
+cp /ucrt64/bin/libatomic-1.dll ~/.luarocks/bin
+cp /ucrt64/bin/libcrypto-3-x64.dll ~/.luarocks/bin
+cp /ucrt64/bin/libgcc_s_seh-1.dll ~/.luarocks/bin
+cp /ucrt64/bin/libgomp-1.dll ~/.luarocks/bin
+cp /ucrt64/bin/libquadmath-0.dll ~/.luarocks/bin
+cp /ucrt64/bin/libsnappy.dll ~/.luarocks/bin
+cp /ucrt64/bin/libssl-3-x64.dll ~/.luarocks/bin
+cp /ucrt64/bin/libstdc++-6.dll ~/.luarocks/bin
+cp /ucrt64/bin/libsodium-26.dll ~/.luarocks/bin/sodium.dll
+cp /ucrt64/bin/libpcre-1.dll ~/.luarocks/bin
+cp /ucrt64/bin/libpcre16-0.dll ~/.luarocks/bin
+cp /ucrt64/bin/libpcre32-0.dll ~/.luarocks/bin
+cp /ucrt64/bin/libpcrecpp-0.dll ~/.luarocks/bin
+cp /ucrt64/bin/libpcreposix-0.dll ~/.luarocks/bin
