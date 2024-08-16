@@ -11,24 +11,24 @@ pacman --noconfirm -S ${UCRT}openssl ${UCRT}libsodium ${UCRT}snappy ${UCRT}pcre
 
 luarocks --lua-version 5.1 make mingw-w64-ucrt-x86_64/eiko-win-1.rockspec --local --server rocks PCRE_DIR=/ucrt64 
 
-cp /ucrt64/bin/luajit.exe ~/.luarocks/bin
-cp /ucrt64/bin/lua51.dll ~/.luarocks/bin
-cp /ucrt64/bin/libatomic-1.dll ~/.luarocks/bin
-cp /ucrt64/bin/libcrypto-3-x64.dll ~/.luarocks/bin
-cp /ucrt64/bin/libgcc_s_seh-1.dll ~/.luarocks/bin
-cp /ucrt64/bin/libgomp-1.dll ~/.luarocks/bin
-cp /ucrt64/bin/libquadmath-0.dll ~/.luarocks/bin
-cp /ucrt64/bin/libsnappy.dll ~/.luarocks/bin
-cp /ucrt64/bin/libssl-3-x64.dll ~/.luarocks/bin
-cp /ucrt64/bin/libstdc++-6.dll ~/.luarocks/bin
-cp /ucrt64/bin/libsodium-26.dll ~/.luarocks/bin
-cp /ucrt64/bin/libpcre-1.dll ~/.luarocks/bin
-cp /ucrt64/bin/libpcre16-0.dll ~/.luarocks/bin
-cp /ucrt64/bin/libpcre32-0.dll ~/.luarocks/bin
-cp /ucrt64/bin/libpcrecpp-0.dll ~/.luarocks/bin
-cp /ucrt64/bin/libpcreposix-0.dll ~/.luarocks/bin
-cp /ucrt64/bin/libwinpthread-1.dll ~/.luarocks/bin
+cp -r ~/.luarocks eiko
+cp /ucrt64/bin/luajit.exe eiko/bin
+cp /ucrt64/bin/lua51.dll eiko/bin
+cp /ucrt64/bin/libatomic-1.dll eiko/bin
+cp /ucrt64/bin/libcrypto-3-x64.dll eiko/bin
+cp /ucrt64/bin/libgcc_s_seh-1.dll eiko/bin
+cp /ucrt64/bin/libgomp-1.dll eiko/bin
+cp /ucrt64/bin/libquadmath-0.dll eiko/bin
+cp /ucrt64/bin/libsnappy.dll eiko/bin
+cp /ucrt64/bin/libssl-3-x64.dll eiko/bin
+cp /ucrt64/bin/libstdc++-6.dll eiko/bin
+cp /ucrt64/bin/libsodium-26.dll eiko/bin
+cp /ucrt64/bin/libpcre-1.dll eiko/bin
+cp /ucrt64/bin/libpcre16-0.dll eiko/bin
+cp /ucrt64/bin/libpcre32-0.dll eiko/bin
+cp /ucrt64/bin/libpcrecpp-0.dll eiko/bin
+cp /ucrt64/bin/libpcreposix-0.dll eiko/bin
+cp /ucrt64/bin/libwinpthread-1.dll eiko/bin
+mv eiko/bin/libsodium-26.dll eiko/bin/sodium.dll
 
-mv ~/.luarocks/bin/libsodium-26.dll ~/.luarocks/bin/sodium.dll
-
-zip -r eiko.zip ~/.luarocks/*
+zip -r eiko.zip eiko
