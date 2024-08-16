@@ -114,10 +114,10 @@ user1_watcher.start()
 user1_login_request()
 
 local user2_watcher = nil
-local function client1_stream_request()
+local function client2_stream_request()
     local incoming_event, err = user2:receive()
     if incoming_event then
-        print("user 1", incoming_event)
+        print("user 2", incoming_event)
     end
 end
 local function user2_connection_request()
@@ -126,7 +126,7 @@ local function user2_connection_request()
         port = server_config.port
     }
     user2:send(event)
-    user2_watcher.callback(client1_stream_request)
+    user2_watcher.callback(client2_stream_request)
 end
 local function user2_login_response()
     local incoming_event, err = user2:receive()
@@ -148,7 +148,7 @@ user2_watcher.start()
 user2_login_request()
 
 local user3_watcher = nil
-local function client1_stream_request()
+local function client3_stream_request()
     local incoming_event, err = user3:receive()
     if incoming_event then
         print("user 3", incoming_event)
@@ -160,7 +160,7 @@ local function user3_connection_request()
         port = server_config.port
     }
     user3:send(event)
-    user3_watcher.callback(client1_stream_request)
+    user3_watcher.callback(client3_stream_request)
 end
 local function user3_login_response()
     local incoming_event, err = user3:receive()
