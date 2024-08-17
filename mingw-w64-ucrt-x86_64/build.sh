@@ -30,5 +30,6 @@ cp /ucrt64/bin/libpcrecpp-0.dll eiko/bin
 cp /ucrt64/bin/libpcreposix-0.dll eiko/bin
 cp /ucrt64/bin/libwinpthread-1.dll eiko/bin
 mv eiko/bin/libsodium-26.dll eiko/bin/sodium.dll
+cp -r res eiko
 
 zip -r eiko.zip eiko
