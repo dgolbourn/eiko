@@ -1,5 +1,6 @@
 FROM ubuntu:latest
 COPY . /eiko
+RUN useradd -m -d /home/eiko eiko
 RUN chown eiko /eiko
 USER eiko
 WORKDIR /eiko
