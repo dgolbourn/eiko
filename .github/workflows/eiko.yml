@@ -121,6 +121,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
+          context: .
           push: true
           file: docker-ubuntu/Dockerfile
           tags: dianakatana/eiko:${{ steps.extract_branch.outputs.branch }}
