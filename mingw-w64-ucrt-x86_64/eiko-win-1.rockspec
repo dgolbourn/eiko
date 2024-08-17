@@ -15,7 +15,7 @@ dependencies = {
    "jsonschema",
    "lualogging",
    "ansicolors",
-   "tinyyaml",
+   "lua-tinyyaml",
    "luafilesystem"
 }
 description = {}
@@ -30,6 +30,5 @@ build = {
       ["eiko.config"] = "src/config.lua",
       ["eiko.uri"] = "src/uri.lua",
       ["eiko.event"] = "src/event.lua",
-   },
-   copy_directories = {"res"}
+   }
 }

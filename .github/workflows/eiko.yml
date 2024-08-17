@@ -26,7 +26,8 @@ jobs:
         with:
           filters: |
             windows:
-              - 'mingw-w64-ucrt-x86_64/**'              
+              - 'src/**'
+              - 'mingw-w64-ucrt-x86_64/**'
     outputs:
       rock: ${{ steps.rock-filter.outputs.rock }}
       windows: ${{ steps.windows-filter.outputs.windows }}
