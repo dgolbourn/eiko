@@ -2,9 +2,10 @@ local ansicolors = require "ansicolors"
 local logging = require "logging"
 local envconfig = require "logging.envconfig"
 
+
 envconfig.set_default_settings("EIKO")
 local logger_name, logger_opts = envconfig.get_default_settings()
-local env_logger = require("logging."..logger_name)
+local env_logger = require("logging." .. logger_name)
 local function log_patterns(colour)
   return {
     [logging.DEBUG] = ansicolors("%{dim white}%date%{reset} %{" .. colour .. "}* %{reset}%{dim cyan}%level %{reset}%message %{dim white}(%file:%line)\n"),
