@@ -16,7 +16,8 @@ dependencies = {
    "lualogging",
    "ansicolors",
    "lua-tinyyaml",
-   "luafilesystem"
+   "luafilesystem",
+   "argparse"
 }
 description = {}
 build = {
