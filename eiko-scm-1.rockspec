@@ -17,6 +17,7 @@ dependencies = {
    "ansicolors",
    "lua-tinyyaml",
    "luafilesystem",
+   "argparse",
    "lua-mongo"
 }
 description = {}
@@ -32,6 +33,7 @@ build = {
       ["eiko.config"] = "src/config.lua",
       ["eiko.uri"] = "src/uri.lua",
       ["eiko.event"] = "src/event.lua",
+      ["eiko.main"] = "src/main.lua"
    },
    copy_directories = {"res"}
 }

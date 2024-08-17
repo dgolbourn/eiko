@@ -30,5 +30,6 @@ build = {
       ["eiko.config"] = "src/config.lua",
       ["eiko.uri"] = "src/uri.lua",
       ["eiko.event"] = "src/event.lua",
+      ["eiko.main"] = "src/main.lua"
    }
 }
