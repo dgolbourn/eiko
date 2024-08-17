@@ -1,7 +1,7 @@
 #!/bin/bash -e
 apt update -y
 apt upgrade -y
-apt install -y build-essential libreadline-dev unzip rlwrap git
+apt install -y build-essential libreadline-dev unzip rlwrap git wget curl
 
 git clone https://luajit.org/git/luajit.git
 cd luajit
