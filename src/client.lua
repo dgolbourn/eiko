@@ -82,7 +82,7 @@ local function new(config)
                     active_state.epoch = epoch
                     active_state.previous[epoch] = incoming_event
                     for past_epoch, _ in pairs(active_state.previous) do
-                        if active_state.epoch - past_epoch > config.message_history_depth then
+                        if active_state.epoch - past_epoch > tonumber(config.message_history_depth) then
                             active_state.previous[past_epoch] = nil
                         end
                     end
