@@ -1,5 +1,6 @@
 local cjson = require "cjson.safe"
 local jsonschema = require "jsonschema"
+require "eiko.logs"
 local log = require "logging".defaultLogger()
 local lfs = require "lfs"
 

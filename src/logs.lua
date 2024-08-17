@@ -1,58 +1,31 @@
 local ansicolors = require "ansicolors"
 local logging = require "logging"
-require "logging.console"
+local envconfig = require "logging.envconfig"
 
-logging.defaultLogger(logging.console {
-  logLevel = logging.DEBUG,
-  destination = "stderr",
-  timestampPattern = "%y-%m-%d %H:%M:%S",
-  logPatterns = {
-    [logging.DEBUG] = ansicolors("%{dim white}%date%{reset} %{white}* %{dim cyan}%level %{reset}%message %{dim white}(%file:%line)\n"),
-    [logging.INFO] = ansicolors("%{dim white}%date%{reset} %{white}* %{bright cyan}%level %{reset}%message %{dim white}(%file:%line)\n"),
-    [logging.WARN] = ansicolors("%{dim white}%date%{reset} %{white}* %{yellow}%level %{reset}%message %{dim white}(%file:%line)\n"),
-    [logging.ERROR] = ansicolors("%{dim white}%date%{reset} %{white}* %{red}%level %{reset}%message %{dim white}(%file:%line)\n"),
-    [logging.FATAL] = ansicolors("%{dim white}%date%{reset} %{white}* %{magenta}%level %{reset}%message %{dim white}(%file:%line)\n"),
+envconfig.set_default_settings("EIKO")
+local logger_name, logger_opts = envconfig.get_default_settings()
+local env_logger = require("logging."..logger_name)
+local function log_patterns(colour)
+  return {
+    [logging.DEBUG] = ansicolors("%{dim white}%date%{reset} %{" .. colour .. "}* %{reset}%{dim cyan}%level %{reset}%message %{dim white}(%file:%line)\n"),
+    [logging.INFO] = ansicolors("%{dim white}%date%{reset} %{" .. colour .. "}* %{reset}%{bright cyan}%level %{reset}%message %{dim white}(%file:%line)\n"),
+    [logging.WARN] = ansicolors("%{dim white}%date%{reset} %{" .. colour .. "}* %{reset}%{yellow}%level %{reset}%message %{dim white}(%file:%line)\n"),
+    [logging.ERROR] = ansicolors("%{dim white}%date%{reset} %{" .. colour .. "}* %{reset}%{red}%level %{reset}%message %{dim white}(%file:%line)\n"),
+    [logging.FATAL] = ansicolors("%{dim white}%date%{reset} %{" .. colour .. "}* %{reset}%{magenta}%level %{reset}%message %{dim white}(%file:%line)\n"),
   }
-})
+end
 
-local client = logging.console {
-  logLevel = logging.DEBUG,
-  destination = "stderr",
-  timestampPattern = "%y-%m-%d %H:%M:%S",
-  logPatterns = {
-    [logging.DEBUG] = ansicolors("%{dim white}%date%{reset} %{green}* %{dim cyan}%level %{reset}%message %{dim white}(%file:%line)\n"),
-    [logging.INFO] = ansicolors("%{dim white}%date%{reset} %{green}* %{bright cyan}%level %{reset}%message %{dim white}(%file:%line)\n"),
-    [logging.WARN] = ansicolors("%{dim white}%date%{reset} %{green}* %{yellow}%level %{reset}%message %{dim white}(%file:%line)\n"),
-    [logging.ERROR] = ansicolors("%{dim white}%date%{reset} %{green}* %{red bright}%level %{reset}%message %{dim white}(%file:%line)\n"),
-    [logging.FATAL] = ansicolors("%{dim white}%date%{reset} %{green}* %{magenta bright}%level %{reset}%message %{dim white}(%file:%line)\n"),
-  }
-}
+logger_opts.logPatterns = log_patterns("white")
+logging.defaultLogger(env_logger(logger_opts))
 
-local server = logging.console {
-  logLevel = logging.DEBUG,
-  destination = "stderr",
-  timestampPattern = "%y-%m-%d %H:%M:%S",
-  logPatterns = {
-    [logging.DEBUG] = ansicolors("%{dim white}%date%{reset} %{red}* %{dim cyan}%level %{reset}%message %{dim white}(%file:%line)\n"),
-    [logging.INFO] = ansicolors("%{dim white}%date%{reset} %{red}* %{bright cyan}%level %{reset}%message %{dim white}(%file:%line)\n"),
-    [logging.WARN] = ansicolors("%{dim white}%date%{reset} %{red}* %{yellow}%level %{reset}%message %{dim white}(%file:%line)\n"),
-    [logging.ERROR] = ansicolors("%{dim white}%date%{reset} %{red}* %{red bright}%level %{reset}%message %{dim white}(%file:%line)\n"),
-    [logging.FATAL] = ansicolors("%{dim white}%date%{reset} %{red}* %{magenta bright}%level %{reset}%message %{dim white}(%file:%line)\n"),
-  }
-}
+logger_opts.logPatterns = log_patterns("green")
+local client = env_logger(logger_opts)
 
-local authenticator = logging.console {
-  logLevel = logging.DEBUG,
-  destination = "stderr",
-  timestampPattern = "%y-%m-%d %H:%M:%S",
-  logPatterns = {
-    [logging.DEBUG] = ansicolors("%{dim white}%date%{reset} %{blue}* %{dim cyan}%level %{reset}%message %{dim white}(%file:%line)\n"),
-    [logging.INFO] = ansicolors("%{dim white}%date%{reset} %{blue}* %{bright cyan}%level %{reset}%message %{dim white}(%file:%line)\n"),
-    [logging.WARN] = ansicolors("%{dim white}%date%{reset} %{blue}* %{yellow}%level %{reset}%message %{dim white}(%file:%line)\n"),
-    [logging.ERROR] = ansicolors("%{dim white}%date%{reset} %{blue}* %{red bright}%level %{reset}%message %{dim white}(%file:%line)\n"),
-    [logging.FATAL] = ansicolors("%{dim white}%date%{reset} %{blue}* %{magenta bright}%level %{reset}%message %{dim white}(%file:%line)\n"),
-  }
-}
+logger_opts.logPatterns = log_patterns("red")
+local server = env_logger(logger_opts)
+
+logger_opts.logPatterns = log_patterns("blue")
+local authenticator = env_logger(logger_opts)
 
 return {
   client = client,
