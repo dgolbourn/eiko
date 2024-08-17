@@ -1,9 +1,8 @@
 FROM ubuntu:latest
-
-COPY ../.devcontainer/scripts/install_lua.sh /tmp/scripts/install_lua.sh
-RUN /tmp/scripts/install_lua.sh
-
-COPY ../.devcontainer/scripts/packages.txt /tmp/scripts/packages.txt
-RUN xargs sudo apt install -y < /tmp/scripts/packages.txt
-
-RUN luarocks make --local --server rocks
+COPY . /eiko
+RUN chown eiko /eiko
+USER eiko
+WORKDIR /eiko
+RUN /eiko/docker-ubuntu/install.sh
+WORKDIR /home/eiko
+ENTRYPOINT ["/eiko/docker-ubuntu/run.sh"]
