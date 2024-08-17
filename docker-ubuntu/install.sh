@@ -1,4 +1,4 @@
-#!/bin/bash -es
+#!/bin/bash -e
 apt update -y
 apt upgrade -y
 apt install -y build-essential libreadline-dev unzip rlwrap git
