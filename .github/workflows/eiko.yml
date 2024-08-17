@@ -21,8 +21,15 @@ jobs:
               - 'test/**'
               - 'src/**'
               - 'eiko-scm-1.rockspec'
+      - uses: dorny/paths-filter@v3
+        id: windows-filter
+        with:
+          filters: |
+            windows:
+              - 'mingw-w64-ucrt-x86_64/**'              
     outputs:
       rock: ${{ steps.rock-filter.outputs.rock }}
+      windows: ${{ steps.windows-filter.outputs.windows }}
   rock:
     needs:
       - filter
@@ -52,8 +59,9 @@ jobs:
           reporter: java-junit
   release-windows:
     needs:
+      - filter
       - rock
-    if: ${{ !failure() && !cancelled() }}
+    if: ${{ !failure() && !cancelled() && needs.filter.outputs.windows == 'true'}}
     runs-on: windows-latest
     defaults:
       run:

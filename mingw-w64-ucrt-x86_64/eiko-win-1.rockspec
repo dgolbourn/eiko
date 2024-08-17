@@ -15,7 +15,7 @@ dependencies = {
    "jsonschema",
    "lualogging",
    "ansicolors",
-   "lua-yaml",
+   "tinyyaml",
    "luafilesystem"
 }
 description = {}

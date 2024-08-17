@@ -7,9 +7,9 @@ local server_config = config.load("res/server.yaml")
 local server = require "eiko.server".new(server_config)
 server.start(event)
 
-local authenticator_config = config.load("res/authenticator.yaml")
-local authenticator = require "eiko.authenticator".new(authenticator_config)
-authenticator.start(event)
+-- local authenticator_config = config.load("res/authenticator.yaml")
+-- local authenticator = require "eiko.authenticator".new(authenticator_config)
+-- authenticator.start(event)
 
 local client1_config = config.load("res/client1.yaml")
 local client1 = require "eiko.client".new(client1_config)
