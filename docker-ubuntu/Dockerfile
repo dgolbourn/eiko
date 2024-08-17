@@ -1,7 +1,7 @@
 FROM ubuntu:latest
 COPY . /eiko
 RUN useradd -m -d /home/eiko eiko
-RUN adduser eiko sudo
+RUN usermod -aG sudo eiko
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 RUN chown -R eiko /eiko
 RUN chmod +x /eiko/docker-ubuntu/install.sh
