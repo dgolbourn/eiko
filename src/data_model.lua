@@ -4,12 +4,13 @@ require "eiko.logs"
 local log = require "logging".defaultLogger()
 local lfs = require "lfs"
 
+
 local function resolver(url)
     local id = string.sub(url, 6,-1)
     local schema_path = "res/schemas/" .. id .. ".json"
-    local f = assert(io.open(schema_path, "rb"))
-    local data = f:read("*all")
-    f:close()
+    local file = assert(io.open(schema_path, "rb"))
+    local data = file:read("*all")
+    file:close()
     local schema = cjson.decode(data)
     return schema
 end
