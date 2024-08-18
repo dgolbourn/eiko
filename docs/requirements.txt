@@ -1,3 +1,2 @@
-sphinx>=8
-myst-parser>=4
+myst-parser
 sphinx-plantuml
