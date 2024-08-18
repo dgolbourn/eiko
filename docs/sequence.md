@@ -1,6 +1,6 @@
-# My nifty title
+# Authorisation Sequence
 
-Some **text**!
+This is the sequence of messages to authorise a **user** with a **server**
 
 ```{plantuml}
     @startuml
