@@ -5,6 +5,13 @@ build:
     python: "3.12"
   apt_packages:
     - plantuml
+  jobs:
+    post_checkout:
+      - |
+        if [ "$READTHEDOCS_VERSION_TYPE" = "external" ] && git diff --quiet origin/main -- docs/ .readthedocs.yaml;
+        then
+          exit 183;
+        fi
 sphinx:
   configuration: docs/conf.py
 python:
