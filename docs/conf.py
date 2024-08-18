@@ -14,7 +14,7 @@ myst_enable_extensions = [
   'strikethrough',
   'attrs_block',
 ]
-plantuml = "plantuml -config docs/puml-theme-mimeograph.puml"
+plantuml = "plantuml -config puml-theme-mimeograph.puml"
 plantuml_output_format = "svg"
 html_theme = "sphinx_rtd_theme"
 templates_path = ['_templates']
