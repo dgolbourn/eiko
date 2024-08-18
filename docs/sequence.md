@@ -4,7 +4,6 @@ User authenticates themselves with Authentication service using basic authentica
 
 ```{plantuml}
     @startuml
-    !theme mimeograph
     actor User
     User -> Client : [[https://github.com/dgolbourn/eiko/blob/main/res/schemas/user_login_request.json user_login_request]]
     Client --> Authenticator : TLS handshake
@@ -21,7 +20,6 @@ The User makes a request to its Client to connect to a Server. The Client initia
 
 ```{plantuml}
     @startuml
-    !theme mimeograph
     actor User
     User -> Client : [[https://github.com/dgolbourn/eiko/blob/main/res/schemas/user_connection_request.json user_connection_request]]
     Client --> Server : TLS handshake
