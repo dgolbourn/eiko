@@ -1,10 +1,18 @@
+import time
+from datetime import datetime
+
 project = 'Eiko'
-copyright = '2024, dgolbourn'
 author = 'dgolbourn'
+copyright = str(datetime.now().year) + ' ' + author
 extensions = [
     "myst_parser",
     'sphinxcontrib.plantuml',
     'sphinx_rtd_theme',
+]
+myst_enable_extensions = [
+  'colon_fence',
+  'strikethrough',
+  'attrs_block',
 ]
 plantuml_output_format = "svg"
 html_theme = "sphinx_rtd_theme"
