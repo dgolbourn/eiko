@@ -1,2 +1,1 @@
-
-[[https://eiko.readthedocs.io/]]
+https://eiko.readthedocs.io/
