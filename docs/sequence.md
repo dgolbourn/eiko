@@ -4,6 +4,8 @@ User authenticates themselves with Authentication service using basic authentica
 
 ```{plantuml}
     @startuml
+    !theme mimeograph
+    actor User
     User -> Client : [[https://github.com/dgolbourn/eiko/blob/main/res/schemas/user_login_request.json user_login_request]]
     Client --> Authenticator : TLS handshake
     Client -> Authenticator : [[https://github.com/dgolbourn/eiko/blob/main/res/schemas/authenticator_login_request.json authenticator_login_request]]
@@ -19,6 +21,8 @@ The User makes a request to its Client to connect to a Server. The Client initia
 
 ```{plantuml}
     @startuml
+    !theme mimeograph
+    actor User
     User -> Client : [[https://github.com/dgolbourn/eiko/blob/main/res/schemas/user_connection_request.json user_connection_request]]
     Client --> Server : TLS handshake
     Server -> Client : [[https://github.com/dgolbourn/eiko/blob/main/res/schemas/server_authentication_request.json server_authentication_request]]
@@ -27,9 +31,9 @@ The User makes a request to its Client to connect to a Server. The Client initia
     Authenticator -> Client : [[https://github.com/dgolbourn/eiko/blob/main/res/schemas/authenticator_authorise_response.json authenticator_authorise_response]]
     Client <-- Authenticator : TLS connection closed
     Client -> Server : [[https://github.com/dgolbourn/eiko/blob/main/res/schemas/server_authentication_response.json server_authentication_response]]
-    Server --> Authenticator : TLS handshake  
+    Server --> Authenticator : TLS handshake
     Server -> Authenticator : [[https://github.com/dgolbourn/eiko/blob/main/res/schemas/authenticator_verify_request.json authenticator_verify_request]]
-    Authenticator -> Server : [[https://github.com/dgolbourn/eiko/blob/main/res/schemas/authenticator_verify_response.json authenticator_verify_response]]    
+    Authenticator -> Server : [[https://github.com/dgolbourn/eiko/blob/main/res/schemas/authenticator_verify_response.json authenticator_verify_response]]
     Server <-- Authenticator : TLS connection closed
     Server -> Client : [[https://github.com/dgolbourn/eiko/blob/main/res/schemas/server_stream_authentication_request.json server_stream_authentication_request]]
     Client -> Server : [[https://github.com/dgolbourn/eiko/blob/main/res/schemas/server_stream_authentication_response.json server_stream_authentication_response]]
