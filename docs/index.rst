@@ -4,7 +4,8 @@ Welcome to Eiko's documentation!
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
-      sequence.md
+
+   sequence.md
 
 
 Indices and tables
