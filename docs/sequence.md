@@ -10,6 +10,7 @@ User authenticates themselves with Authentication service using basic authentica
     Authenticator -> Client : [[https://github.com/dgolbourn/eiko/blob/main/res/schemas/authenticator_login_response.json authenticator_login_response]]
     Client -> User : [[https://github.com/dgolbourn/eiko/blob/main/res/schemas/user_login_response.json user_login_response]]
     @enduml
+```
 
 # Connection Sequence
 
