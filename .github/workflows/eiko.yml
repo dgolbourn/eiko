@@ -13,39 +13,39 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
-        id: test-filter
+        id: netcode-test-filter
         with:
           filters: |
-            test:
+            netcode-test:
               - 'netcode/res/**'
               - 'netcode/test/**'
               - 'netcode/src/**'
               - 'netcode/eiko-scm-1.rockspec'
       - uses: dorny/paths-filter@v3
-        id: windows-filter
+        id: netcode-windows-filter
         with:
           filters: |
-            windows:
+            netcode-windows:
               - 'netcode/res/**'
               - 'netcode/src/**'
               - 'netcode/mingw-w64-ucrt-x86_64/**'
       - uses: dorny/paths-filter@v3
-        id: docker-filter
+        id: netcode-docker-filter
         with:
           filters: |
-            docker:
+            netcode-docker:
               - 'netcode/res/**'
               - 'netcode/src/**'
               - 'netcode/eiko-scm-1.rockspec'
               - 'netcode/docker-ubuntu/**'
     outputs:
-      test: ${{ steps.test-filter.outputs.test }}
-      windows: ${{ steps.windows-filter.outputs.windows }}
-      docker: ${{ steps.docker-filter.outputs.docker }}
-  test:
+      netcode-test: ${{ steps.netcode-test-filter.outputs.netcode-test }}
+      netcode-windows: ${{ steps.netcode-windows-filter.outputs.netcode-windows }}
+      netcode-docker: ${{ steps.netcode-docker-filter.outputs.netcode-docker }}
+  netcode-test:
     needs:
       - filter
-    if: ${{ !failure() && !cancelled() && needs.filter.outputs.test == 'true' }}
+    if: ${{ !failure() && !cancelled() && needs.filter.outputs.netcode-test == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -72,11 +72,11 @@ jobs:
           name: Lua tests
           path: netcode/reports/*.xml
           reporter: java-junit
-  release-windows:
+  netcode-release-windows:
     needs:
       - filter
-      - test
-    if: ${{ !failure() && !cancelled() && needs.filter.outputs.windows == 'true'}}
+      - netcode-test
+    if: ${{ !failure() && !cancelled() && needs.filter.outputs.netcode-windows == 'true'}}
     runs-on: windows-latest
     defaults:
       run:
@@ -99,11 +99,11 @@ jobs:
         with:
           name: release
           path: netcode/eiko.zip
-  release-docker:
+  netcode-release-docker:
     needs:
       - filter
-      - test
-    if: ${{ !failure() && !cancelled() && needs.filter.outputs.docker == 'true'}}
+      - netcode-test
+    if: ${{ !failure() && !cancelled() && needs.filter.outputs.netcode-docker == 'true'}}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
