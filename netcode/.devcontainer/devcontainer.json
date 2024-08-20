@@ -5,7 +5,7 @@
     "forwardPorts": [8081],
 	"service": "development",
     "workspaceFolder": "/workspace/",
-    "postCreateCommand": "git config --global --add safe.directory /workspace",
+    "postCreateCommand": ".devcontainer/scripts/postCreateCommand.sh",
     "postStartCommand": ".devcontainer/scripts/postStartCommand.sh",
     "customizations": {
         "vscode": {
