@@ -13,39 +13,39 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
-        id: test-filter
+        id: netcode-test-filter
         with:
           filters: |
-            test:
-              - 'res/**'
-              - 'test/**'
-              - 'src/**'
-              - 'eiko-scm-1.rockspec'
+            netcode-test:
+              - 'netcode/res/**'
+              - 'netcode/test/**'
+              - 'netcode/src/**'
+              - 'netcode/eiko-scm-1.rockspec'
       - uses: dorny/paths-filter@v3
-        id: windows-filter
+        id: netcode-windows-filter
         with:
           filters: |
-            windows:
-              - 'res/**'
-              - 'src/**'
-              - 'mingw-w64-ucrt-x86_64/**'
+            netcode-windows:
+              - 'netcode/res/**'
+              - 'netcode/src/**'
+              - 'netcode/mingw-w64-ucrt-x86_64/**'
       - uses: dorny/paths-filter@v3
-        id: docker-filter
+        id: netcode-docker-filter
         with:
           filters: |
-            docker:
-              - 'res/**'
-              - 'src/**'
-              - 'eiko-scm-1.rockspec'
-              - 'docker-ubuntu/**'
+            netcode-docker:
+              - 'netcode/res/**'
+              - 'netcode/src/**'
+              - 'netcode/eiko-scm-1.rockspec'
+              - 'netcode/docker-ubuntu/**'
     outputs:
-      test: ${{ steps.test-filter.outputs.test }}
-      windows: ${{ steps.windows-filter.outputs.windows }}
-      docker: ${{ steps.docker-filter.outputs.docker }}
-  test:
+      netcode-test: ${{ steps.netcode-test-filter.outputs.netcode-test }}
+      netcode-windows: ${{ steps.netcode-windows-filter.outputs.netcode-windows }}
+      netcode-docker: ${{ steps.netcode-docker-filter.outputs.netcode-docker }}
+  netcode-test:
     needs:
       - filter
-    if: ${{ !failure() && !cancelled() && needs.filter.outputs.test == 'true' }}
+    if: ${{ !failure() && !cancelled() && needs.filter.outputs.netcode-test == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -57,23 +57,26 @@ jobs:
           luaVersion: luajit
       - uses: leafo/gh-actions-luarocks@v4
       - name: Dependencies
+        working-directory: netcode      
         run: sudo apt update -y && xargs sudo apt install -y < .devcontainer/scripts/packages.txt
       - name: Build
+        working-directory: netcode      
         run: luarocks make --server rocks
       - name: Test
+        working-directory: netcode      
         run:  luarocks test
       - name: Test Report
         uses: dorny/test-reporter@v1
         if: success() || failure()
         with:
           name: Lua tests
-          path: reports/*.xml
+          path: netcode/reports/*.xml
           reporter: java-junit
-  release-windows:
+  netcode-release-windows:
     needs:
       - filter
-      - test
-    if: ${{ !failure() && !cancelled() && needs.filter.outputs.windows == 'true'}}
+      - netcode-test
+    if: ${{ !failure() && !cancelled() && needs.filter.outputs.netcode-windows == 'true'}}
     runs-on: windows-latest
     defaults:
       run:
@@ -89,24 +92,24 @@ jobs:
           msystem: UCRT64
           update: true
       - name: Build
+        working-directory: netcode      
         run: mingw-w64-ucrt-x86_64/build.sh
       - name: Archive
         uses: actions/upload-artifact@v4
         with:
           name: release
-          path: |
-            eiko.zip
-  release-docker:
+          path: netcode/eiko.zip
+  netcode-release-docker:
     needs:
       - filter
-      - test
-    if: ${{ !failure() && !cancelled() && needs.filter.outputs.docker == 'true'}}
+      - netcode-test
+    if: ${{ !failure() && !cancelled() && needs.filter.outputs.netcode-docker == 'true'}}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0      
+          fetch-depth: 0
       - name: Extract branch name
         shell: bash
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
@@ -121,7 +124,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: "{{defaultContext}}:netcode"
           push: true
           file: docker-ubuntu/Dockerfile
           tags: dianakatana/eiko:${{ steps.extract_branch.outputs.branch }}
