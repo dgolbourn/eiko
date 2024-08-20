@@ -1,10 +1,5 @@
-#!/bin/bash
+#!/bin/bash -xe
 .devcontainer/scripts/generate_key_cert.sh
-
 luarocks make --local --server rocks
-
-.devcontainer/scripts/create_db.lua
-
-luarocks test --local 
-
+luarocks test --local
 luacheck src || true
