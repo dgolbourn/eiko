@@ -17,27 +17,27 @@ jobs:
         with:
           filters: |
             test:
-              - 'res/**'
-              - 'test/**'
-              - 'src/**'
-              - 'eiko-scm-1.rockspec'
+              - 'netcode/res/**'
+              - 'netcode/test/**'
+              - 'netcode/src/**'
+              - 'netcode/eiko-scm-1.rockspec'
       - uses: dorny/paths-filter@v3
         id: windows-filter
         with:
           filters: |
             windows:
-              - 'res/**'
-              - 'src/**'
-              - 'mingw-w64-ucrt-x86_64/**'
+              - 'netcode/res/**'
+              - 'netcode/src/**'
+              - 'netcode/mingw-w64-ucrt-x86_64/**'
       - uses: dorny/paths-filter@v3
         id: docker-filter
         with:
           filters: |
             docker:
-              - 'res/**'
-              - 'src/**'
-              - 'eiko-scm-1.rockspec'
-              - 'docker-ubuntu/**'
+              - 'netcode/res/**'
+              - 'netcode/src/**'
+              - 'netcode/eiko-scm-1.rockspec'
+              - 'netcode/docker-ubuntu/**'
     outputs:
       test: ${{ steps.test-filter.outputs.test }}
       windows: ${{ steps.windows-filter.outputs.windows }}
@@ -57,17 +57,20 @@ jobs:
           luaVersion: luajit
       - uses: leafo/gh-actions-luarocks@v4
       - name: Dependencies
+        working-directory: netcode      
         run: sudo apt update -y && xargs sudo apt install -y < .devcontainer/scripts/packages.txt
       - name: Build
+        working-directory: netcode      
         run: luarocks make --server rocks
       - name: Test
+        working-directory: netcode      
         run:  luarocks test
       - name: Test Report
         uses: dorny/test-reporter@v1
         if: success() || failure()
         with:
           name: Lua tests
-          path: reports/*.xml
+          path: netcode/reports/*.xml
           reporter: java-junit
   release-windows:
     needs:
@@ -89,13 +92,13 @@ jobs:
           msystem: UCRT64
           update: true
       - name: Build
+        working-directory: netcode      
         run: mingw-w64-ucrt-x86_64/build.sh
       - name: Archive
         uses: actions/upload-artifact@v4
         with:
           name: release
-          path: |
-            eiko.zip
+          path: netcode/eiko.zip
   release-docker:
     needs:
       - filter
@@ -106,7 +109,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0      
+          fetch-depth: 0
       - name: Extract branch name
         shell: bash
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
@@ -121,7 +124,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: netcode
           push: true
           file: docker-ubuntu/Dockerfile
           tags: dianakatana/eiko:${{ steps.extract_branch.outputs.branch }}
