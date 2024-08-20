@@ -1,7 +1,0 @@
-external/
-reference/
-.vscode/
-reports
-*.pem
-*.o
-*.so
