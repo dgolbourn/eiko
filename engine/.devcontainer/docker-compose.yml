@@ -1,0 +1,8 @@
+version: "3.9"
+services:
+  development:
+    build: 
+      context: .
+    volumes:
+      - ../:/workspace:cached
+    command: sleep infinity

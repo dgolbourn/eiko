@@ -22,6 +22,14 @@ jobs:
               - 'netcode/src/**'
               - 'netcode/eiko-scm-1.rockspec'
       - uses: dorny/paths-filter@v3
+        id: engine-test-filter
+        with:
+          filters: |
+            engine-test:
+              - 'engine/test/**'
+              - 'engine/src/**'
+              - 'engine/eiko-engine-scm-1.rockspec'              
+      - uses: dorny/paths-filter@v3
         id: netcode-windows-filter
         with:
           filters: |
@@ -39,9 +47,40 @@ jobs:
               - 'netcode/eiko-scm-1.rockspec'
               - 'netcode/docker-ubuntu/**'
     outputs:
+      engine-test: ${{ steps.netcode-test-filter.outputs.engine-test }}
       netcode-test: ${{ steps.netcode-test-filter.outputs.netcode-test }}
       netcode-windows: ${{ steps.netcode-windows-filter.outputs.netcode-windows }}
       netcode-docker: ${{ steps.netcode-docker-filter.outputs.netcode-docker }}
+  engine-test:
+    needs:
+      - filter
+    if: ${{ !failure() && !cancelled() && needs.filter.outputs.engine-test == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: luajit
+      - uses: leafo/gh-actions-luarocks@v4
+      - name: Dependencies
+        working-directory: engine      
+        run: sudo apt update -y
+      - name: Build
+        working-directory: engine      
+        run: luarocks make --server rocks
+      - name: Test
+        working-directory: engine      
+        run:  luarocks test
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: success() || failure()
+        with:
+          name: Lua tests
+          path: engine/reports/*.xml
+          reporter: java-junit
   netcode-test:
     needs:
       - filter
