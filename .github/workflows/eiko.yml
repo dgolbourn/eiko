@@ -47,7 +47,7 @@ jobs:
               - 'netcode/eiko-scm-1.rockspec'
               - 'netcode/docker-ubuntu/**'
     outputs:
-      engine-test: ${{ steps.netcode-test-filter.outputs.engine-test }}
+      engine-test: ${{ steps.engine-test-filter.outputs.engine-test }}
       netcode-test: ${{ steps.netcode-test-filter.outputs.netcode-test }}
       netcode-windows: ${{ steps.netcode-windows-filter.outputs.netcode-windows }}
       netcode-docker: ${{ steps.netcode-docker-filter.outputs.netcode-docker }}
